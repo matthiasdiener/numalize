@@ -1,25 +1,31 @@
 #include <iostream>
 #include <map>
 
-
 #include "pin.H"
 
+const int MAXTHREADS = 128;
 
-map<UINT64, UINT64> pagemap;
-map<UINT64, THREADID> firstacc;
+int num_threads = 0;
 
-typedef map<UINT64, UINT64>::iterator it_type;
+struct pageinfo {
+	UINT64 accesses[MAXTHREADS];
+	int firstacc;
+};
+
+map<UINT64, pageinfo> pagemap;
+typedef map<UINT64, pageinfo>::iterator it_type;
 
 
 VOID memaccess(BOOL is_Read, ADDRINT pc, ADDRINT addr, INT32 size, THREADID threadid)
 {
 	UINT64 page = addr >> 12;
-	UINT64 acc = __sync_add_and_fetch(&pagemap[page], 1);
+	pagemap[page].accesses[threadid]++;
+	// UINT64 acc = __sync_add_and_fetch(&pagemap[page], 1);
 
-	if (acc==1) {
-		firstacc[page] = threadid;
-		// cout << "Page " << (page) << endl;
-	}
+	// if (acc==1) {
+	// 	// firstacc[page] = threadid;
+	// 	// cout << "Page " << (page) << endl;
+	// }
 }
 
 VOID trace_memory(INS ins, VOID *v)
@@ -37,8 +43,8 @@ VOID trace_memory(INS ins, VOID *v)
 
 VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
 {
-	int pid = PIN_GetTid();
-	// cerr << "Thread " << threadid << " PID " << pid << " registered" << endl;
+	// int pid = PIN_GetTid();
+	__sync_add_and_fetch(&num_threads, 1);
 }
 
 VOID ThreadFini(THREADID threadid, const CONTEXT *ctxt, INT32 code, VOID *v)
@@ -50,10 +56,14 @@ VOID Fini(INT32 code, VOID *v)
 {
 	UINT64 num_pages = 0;
 	for(it_type it = pagemap.begin(); it != pagemap.end(); it++) {
-		cout << "Page: " << it->first << ", Accesses: " << it->second << ", 1st access: tid " << firstacc[it->first] << endl;
+		cout << "Page: " << it->first << endl;
+		for (int i=0; i<num_threads; i++) {
+			if (it->second.accesses[i] > 0)
+				cout << "\tT" << i << ": " << it->second.accesses[i] << endl;
+		}
 		num_pages++;
 	}
-	cout << "num_pages: "<< num_pages << " memory usage: " << num_pages*4 << " KB" << endl;
+	cout << "total pages: "<< num_pages << " memory usage: " << num_pages*4 << " KB" << endl;
 }
 
 int main(int argc, char *argv[])
