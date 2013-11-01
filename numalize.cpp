@@ -1,5 +1,6 @@
 #include <iostream>
 #include <map>
+#include <cstdlib>
 
 #include "pin.H"
 
@@ -28,6 +29,7 @@ VOID memaccess(BOOL is_Read, ADDRINT pc, ADDRINT addr, INT32 size, THREADID thre
 	// }
 }
 
+
 VOID trace_memory(INS ins, VOID *v)
 {
 	if (INS_IsMemoryRead(ins)) {
@@ -41,16 +43,13 @@ VOID trace_memory(INS ins, VOID *v)
 	}
 }
 
+
 VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
 {
 	// int pid = PIN_GetTid();
 	__sync_add_and_fetch(&num_threads, 1);
 }
 
-VOID ThreadFini(THREADID threadid, const CONTEXT *ctxt, INT32 code, VOID *v)
-{
-	// cerr << "Thread " << threadid << " finished" << endl;
-}
 
 VOID Fini(INT32 code, VOID *v)
 {
@@ -65,6 +64,15 @@ VOID Fini(INT32 code, VOID *v)
 	}
 	cout << "total pages: "<< num_pages << " memory usage: " << num_pages*4 << " KB" << endl;
 }
+
+
+VOID ThreadFini(THREADID threadid, const CONTEXT *ctxt, INT32 code, VOID *v)
+{
+	// brutal hack (pin 2.13, Ubuntu 13.10):
+	Fini(0, NULL);
+	exit(0);
+}
+
 
 int main(int argc, char *argv[])
 {
