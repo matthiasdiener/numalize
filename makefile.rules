@@ -11,7 +11,7 @@
 # include ../../libmapping-sammu-pin/make.config.sammupin
 # include ../../libmapping-sammu-pin/make.macros
 
-TOOL_CXXFLAGS += -Wall
+TOOL_CXXFLAGS += -Wall -g
 
 # TOOL_LIBS += ../../libmapping-sammu-pin/libmapping-nocons.a
 
