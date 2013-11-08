@@ -54,15 +54,19 @@ VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
 VOID Fini(INT32 code, VOID *v)
 {
 	UINT64 num_pages = 0;
+	cerr << "nr, addr";
+	for (int i = 0; i<num_threads; i++)
+		cerr << ", T" << i;
+	cerr << endl;
 	for(it_type it = pagemap.begin(); it != pagemap.end(); it++) {
-		cout << "Page: " << it->first << endl;
+		cerr << num_pages << ", " << it->first;
 		for (int i=0; i<num_threads; i++) {
-			if (it->second.accesses[i] > 0)
-				cout << "\tT" << i << ": " << it->second.accesses[i] << endl;
+			cerr << ", " << it->second.accesses[i];
 		}
+		cerr << endl;
 		num_pages++;
 	}
-	cout << "total pages: "<< num_pages << " memory usage: " << num_pages*4 << " KB" << endl;
+	cout << "total pages: "<< num_pages << ", memory usage: " << num_pages*4 << " KB" << endl;
 }
 
 
