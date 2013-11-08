@@ -11,6 +11,8 @@ int num_threads = 0;
 struct pageinfo {
 	UINT64 accesses[MAXTHREADS];
 	int firstacc;
+
+	pageinfo(){firstacc=-1;} // initialize with -1
 };
 
 map<UINT64, pageinfo> pagemap;
@@ -21,12 +23,7 @@ VOID memaccess(BOOL is_Read, ADDRINT pc, ADDRINT addr, INT32 size, THREADID thre
 {
 	UINT64 page = addr >> 12;
 	pagemap[page].accesses[threadid]++;
-	// UINT64 acc = __sync_add_and_fetch(&pagemap[page], 1);
-
-	// if (acc==1) {
-	// 	// firstacc[page] = threadid;
-	// 	// cout << "Page " << (page) << endl;
-	// }
+	__sync_val_compare_and_swap(&pagemap[page].firstacc, -1, threadid);
 }
 
 
@@ -59,7 +56,7 @@ VOID Fini(INT32 code, VOID *v)
 		cerr << ", T" << i;
 	cerr << endl;
 	for(it_type it = pagemap.begin(); it != pagemap.end(); it++) {
-		cerr << num_pages << ", " << it->first;
+		cerr << num_pages << ", " << it->first << ", " << it->second.firstacc;
 		for (int i=0; i<num_threads; i++) {
 			cerr << ", " << it->second.accesses[i];
 		}
