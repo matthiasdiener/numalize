@@ -51,7 +51,7 @@ VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
 VOID Fini(INT32 code, VOID *v)
 {
 	UINT64 num_pages = 0;
-	cerr << "nr, addr";
+	cerr << "nr, addr, firstacc";
 	for (int i = 0; i<num_threads; i++)
 		cerr << ", T" << i;
 	cerr << endl;
