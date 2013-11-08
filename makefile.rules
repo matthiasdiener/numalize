@@ -15,7 +15,7 @@ TOOL_CXXFLAGS += -Wall
 
 # TOOL_LIBS += ../../libmapping-sammu-pin/libmapping-nocons.a
 
-TOOL_LDFLAGS +=
+TOOL_LDFLAGS += -Wl,-rpath,/opt/pin/intel64/runtime
 
 ##############################################################
 #
