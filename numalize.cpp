@@ -70,8 +70,8 @@ VOID Fini(INT32 code, VOID *v)
 VOID ThreadFini(THREADID threadid, const CONTEXT *ctxt, INT32 code, VOID *v)
 {
 	// brutal hack (pin 2.13, Ubuntu 13.10):
-	Fini(0, NULL);
-	exit(0);
+	//Fini(0, NULL);
+	//exit(0);
 }
 
 
