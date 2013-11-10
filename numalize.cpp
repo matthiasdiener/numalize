@@ -1,29 +1,31 @@
 #include <iostream>
-#include <map>
-#include <cstdlib>
+#include <unordered_map>
 
 #include "pin.H"
 
 const int MAXTHREADS = 128;
 
-int num_threads = 0;
-
 struct pageinfo {
 	UINT64 accesses[MAXTHREADS];
 	int firstacc;
-
-	pageinfo(){firstacc=-1;} // initialize with -1
 };
 
-map<UINT64, pageinfo> pagemap;
-typedef map<UINT64, pageinfo>::iterator it_type;
-
+unordered_map<UINT64, pageinfo> pagemap;
+PIN_LOCK init_lock;
+int num_threads = 0;
 
 VOID memaccess(BOOL is_Read, ADDRINT pc, ADDRINT addr, INT32 size, THREADID threadid)
 {
 	UINT64 page = addr >> 12;
+
+	if (pagemap.find(page) == pagemap.end() ){
+		PIN_GetLock(&init_lock, 0);
+		if (pagemap.find(page) == pagemap.end() )
+			pagemap[page].firstacc = threadid;
+		PIN_ReleaseLock(&init_lock);
+	}
+
 	pagemap[page].accesses[threadid]++;
-	__sync_val_compare_and_swap(&pagemap[page].firstacc, -1, threadid);
 }
 
 
@@ -55,7 +57,8 @@ VOID Fini(INT32 code, VOID *v)
 	for (int i = 0; i<num_threads; i++)
 		cerr << ", T" << i;
 	cerr << endl;
-	for(it_type it = pagemap.begin(); it != pagemap.end(); it++) {
+
+	for(auto it = pagemap.cbegin(); it != pagemap.cend(); it++) {
 		cerr << num_pages << ", " << it->first << ", " << it->second.firstacc;
 		for (int i=0; i<num_threads; i++) {
 			cerr << ", " << it->second.accesses[i];
@@ -63,28 +66,22 @@ VOID Fini(INT32 code, VOID *v)
 		cerr << endl;
 		num_pages++;
 	}
+
 	cout << "total pages: "<< num_pages << ", memory usage: " << num_pages*4 << " KB" << endl;
-}
-
-
-VOID ThreadFini(THREADID threadid, const CONTEXT *ctxt, INT32 code, VOID *v)
-{
-	// brutal hack (pin 2.13, Ubuntu 13.10):
-	//Fini(0, NULL);
-	//exit(0);
 }
 
 
 int main(int argc, char *argv[])
 {
 	if (PIN_Init(argc,argv)) {return 1;}
+	pagemap.reserve(1000000); //4GByte of mem usage, enough for NAS input C
 
 	PIN_AddThreadStartFunction(ThreadStart, 0);
-	PIN_AddThreadFiniFunction(ThreadFini, 0);
 
 	INS_AddInstrumentFunction(trace_memory, 0);
 
 	PIN_AddFiniFunction(Fini, 0);
+	PIN_InitLock(&init_lock);
 
 	PIN_StartProgram();
 }
