@@ -33,6 +33,9 @@ myround <- function(x){val <- round_any(x, 10, f=floor); val<-lapply(val, max, 3
 
 datamap$excl_round <- as.numeric(myround(datamap$excl))
 
+datamap$excl_round <- paste(datamap$excl_round, "%", sep="")
+datamap$excl_round <- paste(ifelse(datamap$excl_round=="30%","<",""), datamap$excl_round, sep="")
+datamap$excl_round <- paste(ifelse(datamap$excl_round=="90%",">",""), datamap$excl_round, sep="")
 datamap <- transform(datamap, data.excl = factor(excl_round))
 
 pdf(outfilename)
