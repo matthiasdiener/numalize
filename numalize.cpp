@@ -11,7 +11,7 @@ struct pageinfo {
 };
 
 unordered_map<UINT64, pageinfo> pagemap;
-PIN_LOCK init_lock;
+PIN_LOCK mem_lock, tid_lock;
 int num_threads = 0;
 
 VOID memaccess(BOOL is_Read, ADDRINT pc, ADDRINT addr, INT32 size, THREADID threadid)
@@ -19,10 +19,10 @@ VOID memaccess(BOOL is_Read, ADDRINT pc, ADDRINT addr, INT32 size, THREADID thre
 	UINT64 page = addr >> 12;
 
 	if (pagemap.find(page) == pagemap.end() ){
-		PIN_GetLock(&init_lock, 0);
+		PIN_GetLock(&mem_lock, 0);
 		if (pagemap.find(page) == pagemap.end() )
 			pagemap[page].firstacc = threadid;
-		PIN_ReleaseLock(&init_lock);
+		PIN_ReleaseLock(&mem_lock);
 	}
 
 	pagemap[page].accesses[threadid]++;
@@ -45,9 +45,16 @@ VOID trace_memory(INS ins, VOID *v)
 
 VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
 {
+	PIN_GetLock(&tid_lock, threadid);
+
+	static int prev_pid = -1;
 	int pid = PIN_GetTid();
 	cout << "TID: " << threadid << " PID: " << pid << endl;
-	__sync_add_and_fetch(&num_threads, 1);
+	if (prev_pid>=pid)
+		cout << "XXX XXX XXX WRONG!" << endl;
+	num_threads++;
+	prev_pid = pid;
+	PIN_ReleaseLock(&tid_lock);
 }
 
 
@@ -82,7 +89,8 @@ int main(int argc, char *argv[])
 	INS_AddInstrumentFunction(trace_memory, 0);
 
 	PIN_AddFiniFunction(Fini, 0);
-	PIN_InitLock(&init_lock);
+	PIN_InitLock(&mem_lock);
+	PIN_InitLock(&tid_lock);
 
 	PIN_StartProgram();
 }
