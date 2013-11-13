@@ -51,7 +51,7 @@ VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
 	int pid = PIN_GetTid();
 	cout << "TID: " << threadid << " PID: " << pid << endl;
 	if (prev_pid>=pid)
-		cout << "XXX XXX XXX WRONG!" << endl;
+		cout << "XXX XXX XXX WRONG! XXX XXX XXX" << endl;
 	num_threads++;
 	prev_pid = pid;
 	PIN_ReleaseLock(&tid_lock);
