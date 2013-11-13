@@ -45,7 +45,8 @@ VOID trace_memory(INS ins, VOID *v)
 
 VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
 {
-	// int pid = PIN_GetTid();
+	int pid = PIN_GetTid();
+	cout << "TID: " << threadid << " PID: " << pid << endl;
 	__sync_add_and_fetch(&num_threads, 1);
 }
 
