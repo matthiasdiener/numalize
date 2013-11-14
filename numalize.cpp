@@ -8,7 +8,7 @@ const int MAXTHREADS = 128;
 
 struct pageinfo {
 //	map<UINT32, UINT64> *accesses;
-	UINT64 accesses[65536];
+	UINT64 accesses[82000];
 	int firstacc;
 };
 
