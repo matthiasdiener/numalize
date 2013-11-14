@@ -13,7 +13,7 @@ struct pageinfo {
 
 unordered_map<UINT64, pageinfo> pagemap;
 map<UINT32, char> pidmap;
-PIN_LOCK mem_lock;
+PIN_LOCK mem_lock, tid_lock;
 
 VOID memaccess(BOOL is_Read, ADDRINT pc, ADDRINT addr, INT32 size, THREADID threadid)
 {
@@ -47,8 +47,11 @@ VOID trace_memory(INS ins, VOID *v)
 
 VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
 {
+	PIN_GetLock(&tid_lock, threadid);
 	int pid = PIN_GetTid();
 	pidmap[pid] = 1;
+	cout << "PID " << pid << endl;
+	PIN_ReleaseLock(&tid_lock);
 }
 
 
@@ -92,6 +95,7 @@ int main(int argc, char *argv[])
 
 	PIN_AddFiniFunction(Fini, 0);
 	PIN_InitLock(&mem_lock);
+	PIN_InitLock(&tid_lock);
 
 	PIN_StartProgram();
 }
