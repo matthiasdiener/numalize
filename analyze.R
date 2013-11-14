@@ -66,4 +66,4 @@ treemap(data,
 
 garbage <- dev.off()
 
-#system(paste("pdfcrop ", outfilename, outfilename))
+system(paste("pdfcrop ", outfilename, outfilename))
