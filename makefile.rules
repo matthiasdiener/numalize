@@ -11,7 +11,7 @@
 # include ../../libmapping-sammu-pin/make.config.sammupin
 # include ../../libmapping-sammu-pin/make.macros
 
-TOOL_CXXFLAGS += -Wall -g -std=c++0x
+TOOL_CXXFLAGS += -Wall -g -std=c++0x -Wno-error
 
 # TOOL_LIBS += ../../libmapping-sammu-pin/libmapping-nocons.a
 

@@ -7,7 +7,8 @@
 const int MAXTHREADS = 128;
 
 struct pageinfo {
-	map<UINT32, UINT64> accesses;
+//	map<UINT32, UINT64> *accesses;
+	UINT64 accesses[65536];
 	int firstacc;
 };
 
@@ -22,14 +23,15 @@ VOID memaccess(BOOL is_Read, ADDRINT pc, ADDRINT addr, INT32 size, THREADID thre
 
 	if (pagemap.find(page) == pagemap.end() ){
 		PIN_GetLock(&mem_lock, 0);
-		if (pagemap.find(page) == pagemap.end() )
+		if (pagemap.find(page) == pagemap.end() ){
 			pagemap[page].firstacc = pid;
+//			pagemap[page].accesses= new map<UINT32, UINT64>();
+		}
 		PIN_ReleaseLock(&mem_lock);
 	}
-
 	pagemap[page].accesses[pid]++;
+//	(*pagemap[page].accesses)[pid]=1;
 }
-
 
 VOID trace_memory(INS ins, VOID *v)
 {
