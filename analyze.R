@@ -7,6 +7,7 @@
 # then run this script:
 # $ ./analyze.R <input.csv>
 
+paste0 <- function(..., sep = "") paste(..., sep = sep)
 
 library("treemap")
 library("RColorBrewer")
@@ -14,35 +15,38 @@ library("plyr")
 
 args <- commandArgs(trailingOnly=TRUE)
 filename <- args[1]
-outfilename <- gsub("csv", "pdf", filename)
+outfilename <- gsub(".csv", ".pdf", filename)
+outfilename <- gsub(".gz", "", outfilename)
+nnodes <- as.numeric(args[2])
 
-datamap <- read.csv(filename)
+data <- read.csv(filename)
+nthreads <- ncol(data)-3
+cpn <- nthreads / nnodes
 
-datamap$sum <- rowSums(datamap[,4:35])
+data$sum <- rowSums(data[,4:ncol(data)]) #Total number of memory accesses
 
-datamap$N1 <- rowSums(datamap[,4:11])
-datamap$N2 <- rowSums(datamap[,12:19])
-datamap$N3 <- rowSums(datamap[,20:27])
-datamap$N4 <- rowSums(datamap[,28:35])
+for (i in 0:(nnodes-1)) {
+  data[paste("N",i,sep="")] <- rowSums(data[,(i*cpn+4):((i+1)*cpn+3)]) #NUmber of accesses per node
+}
 
-datamap$max <- apply(datamap[,37:40], 1, max)
+data$max <- apply(data[,(ncol(data)-nnodes+1):ncol(data)], 1, max) #Highest number of accesses
 
-datamap$excl <- datamap$max / datamap$sum *100
+data$excl <- data$max / data$sum * 100
 
 myround <- function(x){val <- round_any(x, 10, f=floor); val<-lapply(val, max, 30); lapply(val, min, 90)}
 
-datamap$excl_round <- as.numeric(myround(datamap$excl))
+data$excl_round <- as.numeric(myround(data$excl))
 
-datamap$excl_round <- paste(datamap$excl_round, "%", sep="")
-datamap$excl_round <- paste(ifelse(datamap$excl_round=="30%","<",""), datamap$excl_round, sep="")
-datamap$excl_round <- paste(ifelse(datamap$excl_round=="90%",">",""), datamap$excl_round, sep="")
-datamap <- transform(datamap, data.excl = factor(excl_round))
+data$excl_round <- paste(data$excl_round, "%", sep="")
+data$excl_round <- paste(ifelse(data$excl_round=="30%","<",""), data$excl_round, sep="")
+data$excl_round <- paste(ifelse(data$excl_round=="90%",">",""), data$excl_round, sep="")
+data <- transform(data, data.excl = factor(excl_round))
 
 pdf(outfilename)
 
 options(warn=-1)
 
-treemap(datamap,
+treemap(data,
 	index=c("excl_round"),
 	vSize="sum",
 	vColor= "data.excl",
@@ -62,4 +66,4 @@ treemap(datamap,
 
 garbage <- dev.off()
 
-system(paste("pdfcrop ", outfilename, outfilename))
+#system(paste("pdfcrop ", outfilename, outfilename))
