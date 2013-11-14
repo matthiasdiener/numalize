@@ -1,3 +1,4 @@
 obj-*
 pin.log
 *.csv
+*.pdf
