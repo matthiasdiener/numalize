@@ -50,7 +50,6 @@ VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
 	PIN_GetLock(&tid_lock, threadid);
 	int pid = PIN_GetTid();
 	pidmap[pid] = 1;
-	cout << "PID " << pid << endl;
 	PIN_ReleaseLock(&tid_lock);
 }
 
