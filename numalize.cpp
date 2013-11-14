@@ -73,7 +73,7 @@ VOID Fini(INT32 code, VOID *v)
 	cerr << endl;
 
 	for(auto it = pagemap.begin(); it != pagemap.end(); it++) {
-		cerr << num_pages << ", " << it->first << ", " << it->second.firstacc;
+		cerr << num_pages << ", " << it->first << ", " << real_tid[it->second.firstacc];
 		for (int i=0; i<num_threads; i++) {
 			cerr << ", " << it->second.accesses[real_tid[i]];
 		}
