@@ -14,16 +14,28 @@ library("RColorBrewer")
 library("plyr")
 
 args <- commandArgs(trailingOnly=TRUE)
-filename <- args[1]
+filename <- args[1:(length(args)-1)]
 outfilename <- gsub(".csv", ".pdf", filename)
 outfilename <- gsub(".gz", "", outfilename)
-nnodes <- as.numeric(args[2])
+nnodes <- as.numeric(args[length(args)])
 
-data <- read.csv(filename)
-nthreads <- ncol(data)-3
+data <- NULL
+
+for (i in 1:length(filename)) {
+	name <- gsub("[.].*", "" ,filename[i])
+	name <- toupper(gsub(".*/", "" , name))
+	cat ("Loading", filename[i],"=>",name, fill=TRUE)
+	temp <- read.csv(filename[i])
+	temp$name <- name
+	data <- rbind(data, temp)
+}
+
+nthreads <- length(grep("T[0-9]*", names(data)))
 cpn <- nthreads / nnodes
 
-data$sum <- rowSums(data[,4:ncol(data)]) #Total number of memory accesses
+cat("\n#nodes:", nnodes, "\t#threads:", nthreads, fill=TRUE)
+
+data$sum <- rowSums(data[,4:(4+nthreads-1)]) #Total number of memory accesses
 
 for (i in 0:(nnodes-1)) {
   data[paste("N",i,sep="")] <- rowSums(data[,(i*cpn+4):((i+1)*cpn+3)]) #NUmber of accesses per node
@@ -44,10 +56,16 @@ data <- transform(data, data.excl = factor(excl_round))
 
 pdf(outfilename)
 
+if (length(filename)>1) {
+	ind <- c("name", "excl_round")
+} else {
+	ind <- "excl_round"
+}
+
 options(warn=-1)
 
 treemap(data,
-	index=c("excl_round"),
+	index=ind,
 	vSize="sum",
 	vColor= "data.excl",
 	type="categorical",
