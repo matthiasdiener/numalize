@@ -7,30 +7,25 @@
 const int MAXTHREADS = 128;
 
 struct pageinfo {
-//	map<UINT32, UINT64> *accesses;
-	UINT64 accesses[82000];
+	UINT64 accesses[MAXTHREADS];
 	int firstacc;
 };
 
 unordered_map<UINT64, pageinfo> pagemap;
-map<UINT32, char> pidmap;
-PIN_LOCK mem_lock, tid_lock;
+map<UINT32, UINT32> pidmap;
+PIN_LOCK mem_lock;
 
 VOID memaccess(BOOL is_Read, ADDRINT pc, ADDRINT addr, INT32 size, THREADID threadid)
 {
-	int pid = PIN_GetTid();
 	UINT64 page = addr >> 12;
 
-	if (pagemap.find(page) == pagemap.end() ){
+	if (pagemap.find(page) == pagemap.end()){
 		PIN_GetLock(&mem_lock, 0);
-		if (pagemap.find(page) == pagemap.end() ){
-			pagemap[page].firstacc = pid;
-//			pagemap[page].accesses= new map<UINT32, UINT64>();
-		}
+		if (pagemap.find(page) == pagemap.end())
+			pagemap[page].firstacc = threadid;
 		PIN_ReleaseLock(&mem_lock);
 	}
-	pagemap[page].accesses[pid]++;
-//	(*pagemap[page].accesses)[pid]=1;
+	pagemap[page].accesses[threadid]++;
 }
 
 VOID trace_memory(INS ins, VOID *v)
@@ -49,10 +44,8 @@ VOID trace_memory(INS ins, VOID *v)
 
 VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
 {
-	PIN_GetLock(&tid_lock, threadid);
 	int pid = PIN_GetTid();
-	pidmap[pid] = 1;
-	PIN_ReleaseLock(&tid_lock);
+	pidmap[pid] = threadid;
 }
 
 
@@ -62,7 +55,7 @@ VOID Fini(INT32 code, VOID *v)
 	int i = 0;
 
 	for (auto it = pidmap.cbegin(); it != pidmap.cend(); it++)
-		real_tid[i++] = it->first;
+		real_tid[i++] = it->second;
 
 	int num_threads = i;
 
@@ -91,12 +84,10 @@ int main(int argc, char *argv[])
 	pagemap.reserve(1000000); // 4GByte of mem usage, enough for NAS input C
 
 	PIN_AddThreadStartFunction(ThreadStart, 0);
-
 	INS_AddInstrumentFunction(trace_memory, 0);
 
 	PIN_AddFiniFunction(Fini, 0);
 	PIN_InitLock(&mem_lock);
-	PIN_InitLock(&tid_lock);
 
 	PIN_StartProgram();
 }
