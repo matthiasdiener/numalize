@@ -2,7 +2,7 @@
 
 ## How to use:
 # install required packages in R console:
-# install.packages(c("treemap", "RColorBrewer", "plyr")
+# install.packages(c("treemap", "RColorBrewer")
 #
 # then run this script:
 # $ ./analyze.R <input.csv>
@@ -10,10 +10,6 @@
 paste0 <- function(..., sep = "") paste(..., sep = sep)
 
 library("treemap")
-library("RColorBrewer")
-library("plyr")
-library("parallel")
-library("data.table")
 
 args <- commandArgs(trailingOnly=TRUE)
 filename <- args[1:(length(args)-1)]
@@ -25,9 +21,9 @@ nnodes <- as.numeric(args[length(args)])
 data <- NULL
 
 for (i in 1:length(filename)) {
-	name <- gsub("[.].*", "" ,filename[i])
+	name <- gsub("[.].*", "" , filename[i])
 	name <- toupper(gsub(".*/", "" , name))
-	cat ("Loading", filename[i],"=>",name, fill=TRUE)
+	cat ("Loading", filename[i], "=>", name, "\n")
 	temp <- read.csv(filename[i])
 	temp$name <- name
 	data <- rbind(data, temp)
@@ -47,26 +43,22 @@ for (i in 0:(nnodes-1)) {
 }
 
 # Highest number of accesses
-data$max <- apply(data[,(ncol(data)-nnodes+1):ncol(data)], 1, max)
+data$max<-do.call(pmax, data[,(3+nthreads+3):(3+nthreads+3+nnodes-1)])
 
+# Exclusivity
 data$excl <- data$max / data$sum * 100
 
-data<-data.table(data)
-data$excl_round <- round_any(data$excl, 10)
-data$excl_round <- data[,min(excl_round,90), by=row.names(data)]$V1
-data$excl_round <- data[,max(excl_round,30), by=row.names(data)]$V1
+# Round exclusivity and put >, < and %
+data$excl_round <- pmax(pmin(round(data$excl/10)*10, 90), 30)
+data$excl_round <- paste0(ifelse(data$excl_round=="30","<",""), ifelse(data$excl_round=="90",">",""), data$excl_round, "%")
 
-
-data$excl_round <- paste0(data$excl_round, "%")
-data$excl_round <- paste0(ifelse(data$excl_round=="30%","<",""), data$excl_round)
-data$excl_round <- paste0(ifelse(data$excl_round=="90%",">",""), data$excl_round)
 data <- transform(data, data.excl = factor(excl_round))
 
 pdf(outfilename)
 
 options(warn=-1)
 
-treemap(data.frame(data),
+treemap(data,
 	index=if (length(filename)>1) c("name", "excl_round") else "excl_round",
 	vSize="sum",
 	vColor= "data.excl",
