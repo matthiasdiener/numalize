@@ -17,17 +17,14 @@ outfilename <- gsub(".csv", ".pdf", filename[1])
 outfilename <- gsub(".gz", "", outfilename)
 nnodes <- as.numeric(args[length(args)])
 
-data <- NULL
-
 # Read csv files
-for (i in 1:length(filename)) {
-	name <- gsub("[.].*", "" , filename[i])
-	name <- toupper(gsub(".*/", "" , name))
-	cat ("Loading", filename[i], "=>", name, "\n")
-	temp <- read.csv(filename[i])
+data <- do.call(rbind, lapply(filename, function(f) {
+	name <- toupper(gsub(".*/", "" , gsub("[.].*", "" , f)))
+	cat ("Loading", f, "=>", name, "\n")
+	temp <- read.csv(f)
 	temp$name <- name
-	data <- rbind(data, temp)
-}
+	return(temp)
+	}))
 
 threads <- grep("T\\d+", names(data))
 nthreads <- length(threads)
