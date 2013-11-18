@@ -5,7 +5,7 @@
 # install.packages(c("treemap", "RColorBrewer")
 #
 # then run this script:
-# $ ./analyze.R <input.csv>
+# $ ./analyze.R <input.csv> <nnodes>
 
 paste0 <- function(..., sep = "") paste(..., sep = sep)
 
@@ -17,9 +17,9 @@ outfilename <- gsub(".csv", ".pdf", filename[1])
 outfilename <- gsub(".gz", "", outfilename)
 nnodes <- as.numeric(args[length(args)])
 
-
 data <- NULL
 
+# Read csv files
 for (i in 1:length(filename)) {
 	name <- gsub("[.].*", "" , filename[i])
 	name <- toupper(gsub(".*/", "" , name))
@@ -29,21 +29,23 @@ for (i in 1:length(filename)) {
 	data <- rbind(data, temp)
 }
 
-nthreads <- length(grep("T[0-9]*", names(data)))
+threads <- grep("T\\d+", names(data))
+nthreads <- length(threads)
+nodes <- paste0("N", 1:nnodes)
 cpn <- nthreads / nnodes
 
 cat("#nodes:", nnodes, "  #threads:", nthreads, fill=TRUE)
 
 # Total number of memory accesses
-data$sum <- rowSums(data[,4:(4+nthreads-1)])
+data$sum <- rowSums(data[threads])
 
 # Number of accesses per node
-for (i in 0:(nnodes-1)) {
-  data[paste0("N",i)] <- rowSums(data[,(i*cpn+4):((i+1)*cpn+3)])
+for (i in 1:nnodes) {
+	data[nodes[i]] <- rowSums(data[threads[((i-1)*cpn+1):(i*cpn)]])
 }
 
 # Highest number of accesses
-data$max<-do.call(pmax, data[,(3+nthreads+3):(3+nthreads+3+nnodes-1)])
+data$max<-do.call(pmax, data[nodes])
 
 # Exclusivity
 data$excl <- data$max / data$sum * 100
