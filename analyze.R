@@ -2,14 +2,15 @@
 
 ## How to use:
 # install required packages in R console:
-# install.packages(c("treemap", "RColorBrewer")
+# $ sudo R
+# > install.packages("treemap")
 #
 # then run this script:
-# $ ./analyze.R <input.csv> <nnodes>
+# $ ./analyze.R <input.csv> <#nodes>
 
 paste0 <- function(..., sep = "") paste(..., sep = sep)
 
-library("treemap")
+library(treemap)
 
 args <- commandArgs(trailingOnly=TRUE)
 filename <- args[1:(length(args)-1)]
@@ -29,16 +30,16 @@ data <- do.call(rbind, lapply(filename, function(f) {
 threads <- grep("T\\d+", names(data))
 nthreads <- length(threads)
 nodes <- paste0("N", 1:nnodes)
-cpn <- nthreads / nnodes
+tpn <- nthreads / nnodes
 
-cat("#nodes:", nnodes, "  #threads:", nthreads, fill=TRUE)
+cat("#nodes:", nnodes, "  #threads:", nthreads, "  #threads per node:", tpn, "\n")
 
 # Total number of memory accesses
 data$sum <- rowSums(data[threads])
 
 # Number of accesses per node
 for (i in 1:nnodes) {
-	data[nodes[i]] <- rowSums(data[threads[((i-1)*cpn+1):(i*cpn)]])
+	data[nodes[i]] <- rowSums(data[threads[((i-1)*tpn+1):(i*tpn)]])
 }
 
 # Highest number of accesses
@@ -46,12 +47,14 @@ data$max<-do.call(pmax, data[nodes])
 
 # Exclusivity
 data$excl <- data$max / data$sum * 100
+excl_min <- ceiling(100/nnodes/10) * 10
 
 # Round exclusivity and put >, < and %
-data$excl_round <- pmax(pmin(round(data$excl/10)*10, 90), 30)
-data$excl_round <- paste0(ifelse(data$excl_round=="30","<",""), ifelse(data$excl_round=="90",">",""), data$excl_round, "%")
+data$excl_round <- pmax(pmin(round(data$excl/10)*10, 90), excl_min)
+data$excl_round <- paste0(ifelse(data$excl_round==excl_min,"<",""), ifelse(data$excl_round=="90",">",""), data$excl_round, "%")
 
-data <- transform(data, data.excl = factor(excl_round))
+data$data.excl <- factor(data$excl_round)
+
 
 pdf(outfilename)
 
