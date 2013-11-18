@@ -17,10 +17,10 @@ library("data.table")
 
 args <- commandArgs(trailingOnly=TRUE)
 filename <- args[1:(length(args)-1)]
-outfilename <- gsub(".csv", ".pdf", filename)
+outfilename <- gsub(".csv", ".pdf", filename[1])
 outfilename <- gsub(".gz", "", outfilename)
 nnodes <- as.numeric(args[length(args)])
-system("date")
+
 
 data <- NULL
 
@@ -32,53 +32,42 @@ for (i in 1:length(filename)) {
 	temp$name <- name
 	data <- rbind(data, temp)
 }
-system("date")
+
 nthreads <- length(grep("T[0-9]*", names(data)))
 cpn <- nthreads / nnodes
 
-cat("\n#nodes:", nnodes, "\t#threads:", nthreads, fill=TRUE)
+cat("#nodes:", nnodes, "  #threads:", nthreads, fill=TRUE)
 
-data$sum <- rowSums(data[,4:(4+nthreads-1)]) #Total number of memory accesses
+# Total number of memory accesses
+data$sum <- rowSums(data[,4:(4+nthreads-1)])
 
+# Number of accesses per node
 for (i in 0:(nnodes-1)) {
-  data[paste("N",i,sep="")] <- rowSums(data[,(i*cpn+4):((i+1)*cpn+3)]) #NUmber of accesses per node
+  data[paste0("N",i)] <- rowSums(data[,(i*cpn+4):((i+1)*cpn+3)])
 }
 
-system("date")
-data$max <- apply(data[,(ncol(data)-nnodes+1):ncol(data)], 1, max) #Highest number of accesses
+# Highest number of accesses
+data$max <- apply(data[,(ncol(data)-nnodes+1):ncol(data)], 1, max)
 
 data$excl <- data$max / data$sum * 100
 
-system("echo -n before round ;date")
-#myround <- function(x){val <- round_any(x, 10, f=floor); val<-mclapply(val, max, 30); mclapply(val, min, 90)}
 data<-data.table(data)
 data$excl_round <- round_any(data$excl, 10)
 data$excl_round <- data[,min(excl_round,90), by=row.names(data)]$V1
 data$excl_round <- data[,max(excl_round,30), by=row.names(data)]$V1
 
-#data$excl_round <- as.numeric(myround(data$excl))
-system("echo -n after round ; date")
 
-data$excl_round <- paste(data$excl_round, "%", sep="")
-data$excl_round <- paste(ifelse(data$excl_round=="30%","<",""), data$excl_round, sep="")
-data$excl_round <- paste(ifelse(data$excl_round=="90%",">",""), data$excl_round, sep="")
+data$excl_round <- paste0(data$excl_round, "%")
+data$excl_round <- paste0(ifelse(data$excl_round=="30%","<",""), data$excl_round)
+data$excl_round <- paste0(ifelse(data$excl_round=="90%",">",""), data$excl_round)
 data <- transform(data, data.excl = factor(excl_round))
 
-print("Starting treemap")
-system("date")
-
 pdf(outfilename)
-
-if (length(filename)>1) {
-	ind <- c("name", "excl_round")
-} else {
-	ind <- "excl_round"
-}
 
 options(warn=-1)
 
 treemap(data.frame(data),
-	index=ind,
+	index=if (length(filename)>1) c("name", "excl_round") else "excl_round",
 	vSize="sum",
 	vColor= "data.excl",
 	type="categorical",
@@ -97,4 +86,5 @@ treemap(data.frame(data),
 
 garbage <- dev.off()
 
-system(paste("pdfcrop ", outfilename, outfilename))
+system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
+cat("=> saved pdf in", outfilename)
