@@ -65,18 +65,19 @@ treemap(data,
 	vSize="sum",
 	vColor= "data.excl",
 	type="categorical",
-	aspRatio=1,
+#	aspRatio=1,
 	palette="Greens",
 	# palette=c("#FFFFFF","#D2D2D2","#A8A8A8","#7E7E7E","#545454","#2A2A2A","#000000"),
 	title="",
 	title.legend="Exclusivity level",
-	fontsize.labels=c(90,50,15),
+	fontsize.labels=c(60,50,15),
 	fontsize.legend=14,
 	bg.labels="#FFFFFF",
 	algorithm="pivotSize",
 	sortID="color",
 	position.legend="bottom",
-	overlap.labels=0)
+	#overlap.labels=0
+)
 
 garbage <- dev.off()
 
