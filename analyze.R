@@ -82,5 +82,5 @@ treemap(data,
 garbage <- dev.off()
 
 system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
-cat("Exclusivity: ", sum(data$max)/sum(data$sum)*100)
-cat("=> saved pdf in", outfilename)
+cat("Exclusivity: ", sum(data$max)/sum(data$sum)*100, "\n")
+cat("=> saved pdf in", outfilename, "\n")
