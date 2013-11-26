@@ -25,7 +25,7 @@ mat <- data.matrix(csv)
 mat <- t(mat[nrow(mat):1,])
 
 pdf(outfilename)
-levelplot(mat, col.regions=grey(seq(1,0,-0.01)), colorkey=T, xlab="", ylab="", scales=list(x=list(at=seq(1,nt,5)), y=list(at=seq(1,nt,5))))
+levelplot(mat, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab="", ylab="", scales=list(x=list(at=seq(1,nt,5)), y=list(at=seq(1,nt,5))))
 garbage <- dev.off()
 
 system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
