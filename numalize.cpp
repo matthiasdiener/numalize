@@ -55,7 +55,7 @@ VOID Fini(INT32 code, VOID *v)
 	int i = 0;
 
 	for (auto it = pidmap.cbegin(); it != pidmap.cend(); it++)
-		real_tid[i++] = it->second;
+		real_tid[it->second] = i++;
 
 	int num_threads = i;
 
