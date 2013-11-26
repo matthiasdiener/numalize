@@ -3,7 +3,8 @@
 local({r <- getOption("repos"); r["CRAN"] <- "http://cran.r-project.org"; options(repos=r)})
 
 if (!suppressPackageStartupMessages(require(lattice))) {
-	install.packages(lattice)
+	install.packages("lattice")
+	library(lattice)
 }
 
 args <- commandArgs(trailingOnly=TRUE)

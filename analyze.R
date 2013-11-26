@@ -1,19 +1,21 @@
 #!/usr/bin/env Rscript
 
-## How to use:
-# install required packages in R console:
-# $ sudo R
-# > install.packages("treemap")
-#
-# then run this script:
-# $ ./analyze.R <input.csv> <#nodes>
-
 paste0 <- function(..., sep = "") paste(..., sep = sep)
+catn <- function(...) cat(..., "\n")
 
-library(treemap)
+local({r <- getOption("repos"); r["CRAN"] <- "http://cran.r-project.org"; options(repos=r)})
+
+if (!suppressPackageStartupMessages(require(treemap))) {
+	install.packages("treemap")
+	library(treemap)
+}
 
 # Get command line arguments
 args <- commandArgs(trailingOnly=TRUE)
+if (length(args) < 2) {
+	stop("Usage: analyze.R <page.csv>... <#nodes>\n")
+}
+
 filenames <- args[1:(length(args)-1)]
 outfilename <- gsub(".gz", "", gsub(".csv", ".pdf", filenames[1]))
 nnodes <- as.numeric(args[length(args)])
@@ -21,7 +23,7 @@ nnodes <- as.numeric(args[length(args)])
 # Read csv files
 data <- do.call(rbind, lapply(filenames, function(f) {
 	name <- toupper(gsub(".*/", "" , gsub("[.].*", "" , f)))
-	cat ("Loading", f, "=>", name, "\n")
+	catn("Loading", f, "=>", name)
 	temp <- read.csv(f)
 	temp$name <- name
 	return(temp)
@@ -32,7 +34,7 @@ nthreads <- length(threads)
 nodes <- paste0("N", 1:nnodes)
 tpn <- nthreads / nnodes
 
-cat("#nodes:", nnodes, "  #threads:", nthreads, "  #threads per node:", tpn, "\n")
+catn("#nodes:", nnodes, "  #threads:", nthreads, "  #threads per node:", tpn)
 
 # Total number of memory accesses
 data$sum <- rowSums(data[threads])
@@ -43,7 +45,7 @@ for (i in 1:nnodes) {
 }
 
 # Highest number of accesses
-data$max<-do.call(pmax, data[nodes])
+data$max <- do.call(pmax, data[nodes])
 
 # Exclusivity
 data$excl <- data$max / data$sum * 100
@@ -82,5 +84,5 @@ treemap(data,
 garbage <- dev.off()
 
 system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
-cat("Exclusivity: ", sum(data$max)/sum(data$sum)*100, "\n")
-cat("=> saved pdf in", outfilename, "\n")
+catn("Exclusivity: ", sum(data$max)/sum(data$sum)*100)
+catn("=> saved pdf in", outfilename)
