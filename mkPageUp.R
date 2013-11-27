@@ -47,6 +47,12 @@ for (i in 1:nnodes) {
 # Highest number of accesses
 data$max <- do.call(pmax, data[nodes])
 
+# first-touch correctness
+data$correct_node <- max.col(data[nodes])
+ttn<-ceiling((threads-3)/tpn)
+data$first_node <- ttn[data$firstacc+1]
+data$firsttouch_acc <- data$correct_node == data$first_node
+
 # Exclusivity
 data$excl <- data$max / data$sum * 100
 excl_min <- ceiling(100/nnodes/10) * 10
@@ -84,5 +90,6 @@ treemap(data,
 garbage <- dev.off()
 
 system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
-catn("Exclusivity: ", sum(data$max)/sum(data$sum)*100)
+catn("Exclusivity:", sum(data$max)/sum(data$sum)*100, "%")
+catn("First touch correctness:", sum(data$firsttouch_acc)/nrow(data)*100, "%")
 catn("=> saved pdf in", outfilename)
