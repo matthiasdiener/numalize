@@ -25,6 +25,7 @@ data <- do.call(rbind, lapply(filenames, function(f) {
 	name <- toupper(gsub(".*/", "" , gsub("[.].*", "" , f)))
 	catn("Loading", f, "=>", name)
 	temp <- read.csv(f)
+	# aggregate(temp, by=list(temp$addr%/%64), sum)
 	temp$name <- name
 	return(temp)
 	}))
@@ -69,7 +70,7 @@ pdf(outfilename)
 options(warn=-1)
 
 treemap(data,
-	index=if (length(filenames)>1) c("name", "excl_round") else "excl_round",
+	index=c("name", "excl_round"),
 	vSize="sum",
 	vColor= "data.excl",
 	type="categorical",
@@ -78,8 +79,8 @@ treemap(data,
 	# palette=c("#FFFFFF","#D2D2D2","#A8A8A8","#7E7E7E","#545454","#2A2A2A","#000000"),
 	title="",
 	title.legend="Exclusivity level",
-	fontsize.labels=c(60,50,15),
-	fontsize.legend=14,
+	fontsize.labels=c(50,50,15),
+	fontsize.legend=24,
 	bg.labels="#FFFFFF",
 	algorithm="pivotSize",
 	sortID="color",
