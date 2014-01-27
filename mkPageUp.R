@@ -35,7 +35,7 @@ nthreads <- length(threads)
 if (nnodes > nthreads)
 	nnodes <- nthreads
 
-nodes <- paste0("N", 1:nnodes)
+nodes <- paste0("N", 0:(nnodes-1))
 tpn <- nthreads / nnodes
 
 catn("#nodes:", nnodes, "  #threads:", nthreads, "  #threads per node:", tpn)
@@ -44,15 +44,15 @@ catn("#nodes:", nnodes, "  #threads:", nthreads, "  #threads per node:", tpn)
 data$sum <- rowSums(data[threads])
 
 # Number of accesses per node
-for (i in 1:nnodes)
-	data[nodes[i]] <- rowSums(data[threads[((i-1)*tpn+1):(i*tpn)]])
+for (i in 0:(nnodes-1))
+	data[nodes[i+1]] <- rowSums(data[threads[(i*tpn+1):((i+1)*tpn)]])
 
 # Highest number of accesses
 data$max <- do.call(pmax, data[nodes])
 
 # first-touch correctness
-data$correct_node <- max.col(data[nodes], "first")
-ttn <- ceiling((threads-3)/tpn)
+data$correct_node <- max.col(data[nodes], "first")-1
+ttn <- ceiling((threads-4)/tpn)
 data$first_node <- ttn[data$firstacc+1]
 data$firsttouch_acc <- data$correct_node == data$first_node
 
