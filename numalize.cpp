@@ -74,7 +74,7 @@ VOID Fini(INT32 code, VOID *v)
 		num_pages++;
 	}
 
-	cout << "#threads: " << num_threads << "total pages: "<< num_pages << ", memory usage: " << num_pages*4 << " KB" << endl;
+	cout << "#threads: " << num_threads << ", total pages: "<< num_pages << ", memory usage: " << num_pages*4 << " KB" << endl;
 }
 
 
