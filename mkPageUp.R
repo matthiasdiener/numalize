@@ -50,7 +50,7 @@ data$max <- do.call(pmax, data[nodes])
 
 # first-touch correctness
 data$correct_node <- max.col(data[nodes])
-ttn<-ceiling((threads-3)/tpn)
+ttn <- ceiling((threads-3)/tpn)
 data$first_node <- ttn[data$firstacc+1]
 data$firsttouch_acc <- data$correct_node == data$first_node
 

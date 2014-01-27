@@ -4,7 +4,7 @@
 
 #include "pin.H"
 
-const int MAXTHREADS = 128;
+const int MAXTHREADS = 1024;
 
 struct pageinfo {
 	UINT64 accesses[MAXTHREADS];
@@ -74,7 +74,7 @@ VOID Fini(INT32 code, VOID *v)
 		num_pages++;
 	}
 
-	cout << "total pages: "<< num_pages << ", memory usage: " << num_pages*4 << " KB" << endl;
+	cout << "#threads: " << num_threads << "total pages: "<< num_pages << ", memory usage: " << num_pages*4 << " KB" << endl;
 }
 
 
