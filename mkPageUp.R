@@ -12,9 +12,8 @@ if (!suppressPackageStartupMessages(require(treemap))) {
 
 # Get command line arguments
 args <- commandArgs(trailingOnly=TRUE)
-if (length(args) < 2) {
+if (length(args) < 2)
 	stop("Usage: analyze.R <page.csv>... <#nodes>\n")
-}
 
 filenames <- args[1:(length(args)-1)]
 outfilename <- gsub(".gz", "", gsub(".csv", ".pdf", filenames[1]))
@@ -32,6 +31,10 @@ data <- do.call(rbind, lapply(filenames, function(f) {
 
 threads <- grep("T\\d+", names(data))
 nthreads <- length(threads)
+
+if (nnodes > nthreads)
+	nnodes <- nthreads
+
 nodes <- paste0("N", 1:nnodes)
 tpn <- nthreads / nnodes
 
@@ -41,15 +44,14 @@ catn("#nodes:", nnodes, "  #threads:", nthreads, "  #threads per node:", tpn)
 data$sum <- rowSums(data[threads])
 
 # Number of accesses per node
-for (i in 1:nnodes) {
+for (i in 1:nnodes)
 	data[nodes[i]] <- rowSums(data[threads[((i-1)*tpn+1):(i*tpn)]])
-}
 
 # Highest number of accesses
 data$max <- do.call(pmax, data[nodes])
 
 # first-touch correctness
-data$correct_node <- max.col(data[nodes])
+data$correct_node <- max.col(data[nodes], "first")
 ttn <- ceiling((threads-3)/tpn)
 data$first_node <- ttn[data$firstacc+1]
 data$firsttouch_acc <- data$correct_node == data$first_node
