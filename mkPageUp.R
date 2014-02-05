@@ -16,8 +16,8 @@ if (length(args) < 2)
 	stop("Usage: analyze.R <page.csv>... <#nodes>\n")
 
 filenames <- args[1:(length(args)-1)]
-outfilename <- gsub(".gz", "", gsub(".csv", ".pdf", filenames[1]))
 nnodes <- as.numeric(args[length(args)])
+outfilename <- ""
 
 # Read csv files
 data <- do.call(rbind, lapply(filenames, function(f) {
@@ -26,8 +26,11 @@ data <- do.call(rbind, lapply(filenames, function(f) {
 	temp <- read.csv(f)
 	# aggregate(temp, by=list(temp$addr%/%64), sum)
 	temp$name <- name
+	outfilename <<- paste0(outfilename, name, "_")
 	return(temp)
 	}))
+
+outfilename <- paste0(gsub(".$", "", outfilename), ".pdf")
 
 threads <- grep("T\\d+", names(data))
 nthreads <- length(threads)
