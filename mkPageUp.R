@@ -13,7 +13,7 @@ if (!suppressPackageStartupMessages(require(treemap))) {
 # Get command line arguments
 args <- commandArgs(trailingOnly=TRUE)
 if (length(args) < 2)
-	stop("Usage: analyze.R <page.csv>... <#nodes>\n")
+	stop("Usage: mkPageUp.R <page.csv>... <#nodes>\n")
 
 filenames <- args[1:(length(args)-1)]
 nnodes <- as.numeric(args[length(args)])
@@ -80,7 +80,7 @@ treemap(data,
 	vColor= "data.excl",
 	type="categorical",
 #	aspRatio=1,
-	palette="Greens",
+	palette="Greys",
 	# palette=c("#FFFFFF","#D2D2D2","#A8A8A8","#7E7E7E","#545454","#2A2A2A","#000000"),
 	title="",
 	title.legend="Exclusivity level",
