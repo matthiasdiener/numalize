@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 
+library(data.table)
+
 paste0 <- function(..., sep = "") paste(..., sep = sep)
 catn <- function(...) cat(..., "\n")
 
@@ -20,15 +22,23 @@ nnodes <- as.numeric(args[length(args)])
 outfilename <- ""
 
 # Read csv files
-data <- do.call(rbind, lapply(filenames, function(f) {
-	name <- toupper(gsub(".*/", "" , gsub("[.].*", "" , f)))
-	catn("Loading", f, "=>", name)
-	temp <- read.csv(f)
-	# aggregate(temp, by=list(temp$addr%/%64), sum)
-	temp$name <- name
-	outfilename <<- paste0(outfilename, name, "_")
-	return(temp)
-	}))
+# data <- do.call(rbind, lapply(filenames, function(f) {
+# 	name <- toupper(gsub(".*/", "" , gsub("[.].*", "" , f)))
+# 	catn("Loading", f, "=>", name)
+# 	temp <- read.csv(f)
+# 	# aggregate(temp, by=list(temp$addr%/%64), sum)
+# 	temp$name <- name
+# 	outfilename <<- paste0(outfilename, name, "_")
+# 	return(temp)
+# 	}))
+
+data=read.csv(filenames[1])
+
+data$addr = data$addr %/% 512
+data=data.table(data)
+data=data[, lapply(.SD, as.numeric)]
+data=data[, lapply(.SD, sum), by=addr]
+data=data.frame(data)
 
 outfilename <- paste0(gsub(".$", "", outfilename), ".pdf")
 
@@ -67,35 +77,38 @@ excl_min <- ceiling(100/nnodes/10) * 10
 data$excl_round <- pmax(pmin(round(data$excl/10)*10, 90), excl_min)
 data$excl_round <- paste0(ifelse(data$excl_round==excl_min,"<",""), ifelse(data$excl_round=="90",">",""), data$excl_round, "%")
 
-data$data.excl <- factor(data$excl_round)
+DT <- data.table(data)
+DT[order(excl_round), sum(max), by=excl_round]
+
+# data$data.excl <- factor(data$excl_round)
 
 
-pdf(outfilename)
+# pdf(outfilename)
 
-options(warn=-1)
+# options(warn=-1)
 
-treemap(data,
-	index=c("name", "excl_round"),
-	vSize="sum",
-	vColor= "data.excl",
-	type="categorical",
-	aspRatio=2,
-	palette="Greys",
-	# palette=c("#FFFFFF","#D2D2D2","#A8A8A8","#7E7E7E","#545454","#2A2A2A","#000000"),
-	title="",
-	title.legend="Exclusivity level",
-	fontsize.labels=c(25,0,0),
-	fontsize.legend=20,
-	bg.labels="#FFFFFF",
-	algorithm="pivotSize",
-	sortID="color",
-	position.legend="bottom",
-	#overlap.labels=0
-)
+# treemap(data,
+# 	index=c("name", "excl_round"),
+# 	vSize="sum",
+# 	vColor= "data.excl",
+# 	type="categorical",
+# 	aspRatio=2,
+# 	palette="Greys",
+# 	# palette=c("#FFFFFF","#D2D2D2","#A8A8A8","#7E7E7E","#545454","#2A2A2A","#000000"),
+# 	title="",
+# 	title.legend="Exclusivity level",
+# 	fontsize.labels=c(25,0,0),
+# 	fontsize.legend=20,
+# 	bg.labels="#FFFFFF",
+# 	algorithm="pivotSize",
+# 	sortID="color",
+# 	position.legend="bottom",
+# 	#overlap.labels=0
+# )
 
-garbage <- dev.off()
+# garbage <- dev.off()
 
-system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
-catn("Exclusivity:", sum(data$max)/sum(data$sum)*100, "%")
+# system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
+catn("Exclusivity:", sum(data$max, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%")
 catn("First touch correctness:", sum(data$firsttouch_acc)/nrow(data)*100, "%")
-catn("=> saved pdf in", outfilename)
+# catn("=> saved pdf in", outfilename)
