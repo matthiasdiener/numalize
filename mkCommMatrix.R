@@ -26,7 +26,7 @@ for (i in 1:length(args)) {
 	mat <- t(mat[nrow(mat):1,])
 
 	pdf(outfilename)
-	print(levelplot(mat, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab="", ylab="", scales=list(x=list(at=seq(1,nt,5)), y=list(at=seq(1,nt,5)))))
+	print(levelplot(mat, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab="", ylab="", scales=list(x=list(cex=3,at=seq(1,nt,5)), y=list(cex=3,at=seq(1,nt,5)))))
 	garbage <- dev.off()
 
 	system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
