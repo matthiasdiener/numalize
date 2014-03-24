@@ -8,27 +8,83 @@
 
 const int MAXTHREADS = 1024;
 const int PAGESIZE = 12;
-const int COMMSIZE = 6;
+const int COMMSIZE = 9;
 
 UINT64 matrix[MAXTHREADS][MAXTHREADS];
 
 unordered_map<UINT64, array<UINT64, MAXTHREADS+1>> pagemap;
 
-unordered_map<UINT64, THREADID> commmap;
+unordered_map<UINT64, array<UINT32,2>> commmap;
 
 map<UINT32, UINT32> pidmap;
+PIN_LOCK lock;
+
+unsigned long nacc = 0;
+
+
+static inline
+void inc_comm(int a, int b) {
+	// cout << a << b;
+	matrix[a][b-1]++;
+	// __sync_add_and_fetch(&matrix[a][b-1], 1);
+}
 
 
 
-VOID memaccess(BOOL is_Read, ADDRINT pc, ADDRINT addr, INT32 size, THREADID threadid)
+VOID memaccess(BOOL is_Read, ADDRINT pc, ADDRINT addr, INT32 size, THREADID tid)
 {
-	UINT64 page = addr >> PAGESIZE;
+	// UINT64 page = addr >> PAGESIZE;
 	UINT64 line = addr >> COMMSIZE;
 
-	if (commmap[line] > 0 && commmap[line] != threadid+1)
-		matrix[commmap[line]-1][threadid]++;
+	// PIN_GetLock(&lock, 0);
 
-	commmap[line] = threadid+1;
+	int sh = 1;
+	if (commmap[line][0] == 0 && commmap[line][1] == 0)
+		sh= 0;
+	if (commmap[line][0] != 0 && commmap[line][1] != 0)
+		sh= 2;
+
+	switch (sh) {
+		case 0: /* no one accessed page before, store accessing thread in pos 0 */
+			commmap[line][0] = tid+1;
+			break;
+
+		case 1: /* one previous access => needs to be in pos 0 */
+			if (commmap[line][0] != tid+1) {
+				inc_comm(tid, commmap[line][0]);
+				commmap[line][1] = commmap[line][0];
+				commmap[line][0] = tid+1;
+			}
+			break;
+
+		case 2: // two previous accesses
+			if (commmap[line][0] != tid+1 && commmap[line][1] != tid+1) {
+				inc_comm(tid, commmap[line][0]);
+				inc_comm(tid, commmap[line][1]);
+				commmap[line][1] = commmap[line][0];
+				commmap[line][0] = tid+1;
+			} else if (commmap[line][0] == tid+1) {
+				inc_comm(tid, commmap[line][1]);
+			} else if (commmap[line][1] == tid+1) {
+				inc_comm(tid, commmap[line][0]);
+				commmap[line][1] = commmap[line][0];
+				commmap[line][0] = tid+1;
+			}
+
+			break;
+	}
+	// PIN_ReleaseLock(&lock);
+
+	// __sync_add_and_fetch(&nacc, 1);
+
+	// if (commmap[line] > 0 && commmap[line] != threadid+1) {
+	// 	int tid = __sync_add_and_fetch(&commmap[line], 0) - 1;
+	// 	 __sync_add_and_fetch(&matrix[tid][threadid], 1);
+
+	// }
+	// 	// matrix[commmap[line]-1][threadid]++;
+
+	// commmap[line] = threadid+1;
 
 	// if (pagemap[page][MAXTHREADS] == 0)
 	// 	__sync_bool_compare_and_swap(&pagemap[page][MAXTHREADS], 0, threadid+1);
@@ -100,13 +156,15 @@ VOID Fini(INT32 code, VOID *v)
 
 	print_matrix(num_threads);
 
-	cout << "#threads: " << num_threads << ", total pages: "<< num_pages << ", memory usage: " << num_pages*pow(2,PAGESIZE)/1024 << " KB" << endl;
+	cout << "#threads: " << num_threads << ", total pages: "<< num_pages << ", memory usage: " << num_pages*pow(2,PAGESIZE)/1024 << " KB, nacc: " << nacc << endl;
 }
 
 
 int main(int argc, char *argv[])
 {
 	if (PIN_Init(argc,argv)) return 1;
+
+	PIN_InitLock(&lock);
 
 	pagemap.reserve(1000000); // ~4GByte of mem usage, enough for NAS input C
 	commmap.reserve(100000000);
