@@ -3,12 +3,13 @@
 #include <map>
 #include <array>
 #include <cmath>
+#include <cstring>
 
 #include "pin.H"
 
 const int MAXTHREADS = 1024;
 const int PAGESIZE = 12;
-const int COMMSIZE = 9;
+const int COMMSIZE = 6;
 
 UINT64 matrix[MAXTHREADS][MAXTHREADS];
 
@@ -20,13 +21,12 @@ map<UINT32, UINT32> pidmap;
 PIN_LOCK lock;
 
 unsigned long nacc = 0;
+void print_matrix(int);
 
 
 static inline
 void inc_comm(int a, int b) {
-	// cout << a << b;
 	matrix[a][b-1]++;
-	// __sync_add_and_fetch(&matrix[a][b-1], 1);
 }
 
 
@@ -75,7 +75,13 @@ VOID memaccess(BOOL is_Read, ADDRINT pc, ADDRINT addr, INT32 size, THREADID tid)
 	}
 	// PIN_ReleaseLock(&lock);
 
-	// __sync_add_and_fetch(&nacc, 1);
+	int n = __sync_add_and_fetch(&nacc, 1);
+
+	if (n % 50000000 == 0) {
+		print_matrix(8);
+		memset(&matrix, 0, sizeof(matrix));
+	}
+
 
 	// if (commmap[line] > 0 && commmap[line] != threadid+1) {
 	// 	int tid = __sync_add_and_fetch(&commmap[line], 0) - 1;
@@ -122,6 +128,7 @@ VOID print_matrix(int num_threads)
 		}
 		cout << endl;
 	}
+	cout << endl;
 }
 
 
