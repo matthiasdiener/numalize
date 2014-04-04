@@ -20,68 +20,82 @@ unordered_map<UINT64, array<UINT64, MAXTHREADS+1>> pagemap;
 
 unordered_map<UINT64, array<UINT32,2>> commmap;
 
+array<UINT64, MAXTHREADS> t_acc;
+UINT64 ncomm = 0;
+// UINT64 t_acc [MAXTHREADS];
+
 map<UINT32, UINT32> pidmap;
 PIN_LOCK lock;
 
-unsigned long nacc = 0;
-void print_matrix(int);
+void print_matrix();
 void print_numa();
 
 
-static inline
-void inc_comm(int a, int b) {
-	matrix[a][b-1]++;
+VOID mythread(VOID * arg)
+{
+	while(!PIN_IsProcessExiting()) {
+		PIN_Sleep(50000);
+		print_matrix();
+	}
 }
 
-void do_comm(THREADID tid, ADDRINT addr)
+static inline
+VOID inc_comm(int a, int b) {
+	if (a<=3 && a>0) a--;
+	if (b<=3 && b>0) b--;
+	if (a!=b-1)
+		matrix[a][b-1]++;
+}
+
+VOID do_comm(THREADID tid, ADDRINT addr)
 {
 	UINT64 line = addr >> COMMSIZE;
 	int sh = 1;
 
-	// convert to
-	// a = commmap[line][0]; b = commmap[line][1];
+	THREADID a = commmap[line][0];
+	THREADID b = commmap[line][1];
+	// THREADID tid = threadid ? threadid - 1 : threadid;
 
-	// PIN_GetLock(&lock, 0);
 
-	if (commmap[line][0] == 0 && commmap[line][1] == 0)
+	if (a == 0 && b == 0)
 		sh= 0;
-	if (commmap[line][0] != 0 && commmap[line][1] != 0)
+	if (a != 0 && b != 0)
 		sh= 2;
 
 	switch (sh) {
-		case 0: /* no one accessed page before, store accessing thread in pos 0 */
+		case 0: /* no one accessed line before, store accessing thread in pos 0 */
 			commmap[line][0] = tid+1;
 			break;
 
 		case 1: /* one previous access => needs to be in pos 0 */
-			if (commmap[line][0] != tid+1) {
-				inc_comm(tid, commmap[line][0]);
-				commmap[line][1] = commmap[line][0];
+			if (a != tid+1) {
+				inc_comm(tid, a);
+				commmap[line][1] = a;
 				commmap[line][0] = tid+1;
 			}
 			break;
 
 		case 2: // two previous accesses
-			if (commmap[line][0] != tid+1 && commmap[line][1] != tid+1) {
-				inc_comm(tid, commmap[line][0]);
-				inc_comm(tid, commmap[line][1]);
-				commmap[line][1] = commmap[line][0];
+			if (a != tid+1 && b != tid+1) {
+				inc_comm(tid, a);
+				inc_comm(tid, b);
+				commmap[line][1] = a;
 				commmap[line][0] = tid+1;
-			} else if (commmap[line][0] == tid+1) {
-				inc_comm(tid, commmap[line][1]);
-			} else if (commmap[line][1] == tid+1) {
-				inc_comm(tid, commmap[line][0]);
-				commmap[line][1] = commmap[line][0];
+			} else if (a == tid+1) {
+				inc_comm(tid, b);
+			} else if (b == tid+1) {
+				inc_comm(tid, a);
+				commmap[line][1] = a;
 				commmap[line][0] = tid+1;
 			}
 
 			break;
 	}
-	// PIN_ReleaseLock(&lock);
 }
 
-void do_numa(THREADID tid, ADDRINT addr)
+VOID do_numa(THREADID threadid, ADDRINT addr)
 {
+	THREADID tid = threadid ? threadid - 1 : threadid;
 	UINT64 page = addr >> PAGESIZE;
 	if (pagemap[page][MAXTHREADS] == 0)
 		__sync_bool_compare_and_swap(&pagemap[page][MAXTHREADS], 0, tid+1);
@@ -90,30 +104,22 @@ void do_numa(THREADID tid, ADDRINT addr)
 }
 
 
-VOID memaccess(BOOL is_Read, ADDRINT pc, ADDRINT addr, INT32 size, THREADID tid)
+VOID memaccess(ADDRINT addr, THREADID tid)
 {
-	do_comm(tid, addr);
+	do_comm(tid>=2?tid-1:tid, addr);
 	// do_numa(tid, addr);
-
-	int n = __sync_add_and_fetch(&nacc, 1);
-
-	if (n % 50000000 == 0) {
-		print_matrix(num_threads);
-		// print_numa();
-		// memset(&matrix, 0, sizeof(matrix));
-	}
 }
 
 VOID trace_memory(INS ins, VOID *v)
 {
 	if (INS_IsMemoryRead(ins)) {
-		INS_InsertCall( ins, IPOINT_BEFORE, (AFUNPTR)memaccess, IARG_BOOL, true, IARG_INST_PTR, IARG_MEMORYREAD_EA, IARG_MEMORYREAD_SIZE, IARG_THREAD_ID, IARG_END);
+		INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)memaccess, IARG_MEMORYREAD_EA, IARG_THREAD_ID, IARG_END);
 	}
 	if (INS_HasMemoryRead2(ins)) {
-		INS_InsertCall( ins, IPOINT_BEFORE, (AFUNPTR)memaccess, IARG_BOOL, true, IARG_INST_PTR, IARG_MEMORYREAD2_EA, IARG_MEMORYREAD_SIZE, IARG_THREAD_ID, IARG_END);
+		INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)memaccess, IARG_MEMORYREAD2_EA, IARG_THREAD_ID, IARG_END);
 	}
 	if (INS_IsMemoryWrite(ins)) {
-		INS_InsertCall( ins, IPOINT_BEFORE, (AFUNPTR)memaccess, IARG_BOOL, false, IARG_INST_PTR, IARG_MEMORYWRITE_EA, IARG_MEMORYWRITE_SIZE, IARG_THREAD_ID, IARG_END);
+		INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)memaccess, IARG_MEMORYWRITE_EA, IARG_THREAD_ID, IARG_END);
 	}
 }
 
@@ -122,10 +128,10 @@ VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
 {
 	__sync_add_and_fetch(&num_threads, 1);
 	int pid = PIN_GetTid();
-	pidmap[pid] = threadid;
+	pidmap[pid] = threadid ? threadid - 1 : threadid;
 }
 
-VOID print_matrix(int num_threads)
+VOID print_matrix()
 {
 	static long n = 0;
 	ofstream f;
@@ -136,7 +142,7 @@ VOID print_matrix(int num_threads)
 	f.open(fname);
 	for (int i = num_threads-1; i>=0; i--) {
 		for (int j = 0; j<num_threads; j++) {
-			f << matrix[i][j] + matrix[j][i];
+			f << matrix[i][j];
 			if (j != num_threads-1)
 				f << ",";
 		}
@@ -173,14 +179,14 @@ void print_numa()
 		cout << endl;
 		num_pages++;
 	}
-	cout << "#threads: " << num_threads << ", total pages: "<< num_pages << ", memory usage: " << num_pages*pow(2,PAGESIZE)/1024 << " KB, nacc: " << nacc << endl;
+	cout << "#threads: " << num_threads << ", total pages: "<< num_pages << ", memory usage: " << num_pages*pow(2,PAGESIZE)/1024 << " KB, nacc: " << endl;
 }
 
 
 
 VOID Fini(INT32 code, VOID *v)
 {
-	print_matrix(num_threads);
+	print_matrix();
 	// print_numa();
 }
 
@@ -188,6 +194,10 @@ VOID Fini(INT32 code, VOID *v)
 int main(int argc, char *argv[])
 {
 	if (PIN_Init(argc,argv)) return 1;
+
+	THREADID t = PIN_SpawnInternalThread(mythread, NULL, 0, NULL);
+	if (t!=1)
+		cerr << "ERROR " << t << endl;
 
 	PIN_InitLock(&lock);
 
