@@ -41,8 +41,6 @@ VOID mythread(VOID * arg)
 
 static inline
 VOID inc_comm(int a, int b) {
-	if (a<=3 && a>0) a--;
-	if (b<=3 && b>0) b--;
 	if (a!=b-1)
 		matrix[a][b-1]++;
 }
@@ -106,7 +104,7 @@ VOID do_numa(THREADID threadid, ADDRINT addr)
 
 VOID memaccess(ADDRINT addr, THREADID tid)
 {
-	do_comm(tid>=2?tid-1:tid, addr);
+	do_comm(tid>=2 ? tid-1 : tid, addr);
 	// do_numa(tid, addr);
 }
 
@@ -137,12 +135,20 @@ VOID print_matrix()
 	ofstream f;
 	string fname = to_string(n++) + ".csv";
 
+	int real_tid[MAXTHREADS+1];
+	int i = 0, a, b;
+
+	for (auto it : pidmap)
+		real_tid[it.second] = i++;
+
 	cout << fname << endl;
 
 	f.open(fname);
 	for (int i = num_threads-1; i>=0; i--) {
+		a = real_tid[i];
 		for (int j = 0; j<num_threads; j++) {
-			f << matrix[i][j];
+			b = real_tid[j];
+			f << matrix[a][b] + matrix[b][a];
 			if (j != num_threads-1)
 				f << ",";
 		}
