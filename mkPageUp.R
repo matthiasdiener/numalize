@@ -34,11 +34,11 @@ outfilename <- ""
 
 data=read.csv(filenames[1])
 
-data$addr = data$addr %/% 512
-data=data.table(data)
-data=data[, lapply(.SD, as.numeric)]
-data=data[, lapply(.SD, sum), by=addr]
-data=data.frame(data)
+# data$addr = data$addr %/% 512
+# data=data.table(data)
+# data=data[, lapply(.SD, as.numeric)]
+# data=data[, lapply(.SD, sum), by=addr]
+# data=data.frame(data)
 
 outfilename <- paste0(gsub(".$", "", outfilename), ".pdf")
 
@@ -67,7 +67,7 @@ data$max <- do.call(pmax, data[nodes])
 data$correct_node <- max.col(data[nodes], "first")-1
 ttn <- ceiling((threads-3)/tpn)-1
 data$first_node <- ttn[data$firstacc+1]
-data$firsttouch_acc <- data$correct_node == data$first_node
+data$firsttouch_acc <- (data$correct_node == data$first_node) * data$sum
 
 # Exclusivity
 data$excl <- data$max / data$sum * 100
@@ -110,5 +110,5 @@ DT[order(excl_round), sum(max), by=excl_round]
 
 # system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
 catn("Exclusivity:", sum(data$max, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%")
-catn("First touch correctness:", sum(data$firsttouch_acc)/nrow(data)*100, "%")
+catn("First touch correctness:", sum(data$firsttouch_acc)/sum(data$sum)*100, "%")
 # catn("=> saved pdf in", outfilename)
