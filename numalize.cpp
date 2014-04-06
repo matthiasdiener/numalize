@@ -9,8 +9,9 @@
 #include "pin.H"
 
 const int MAXTHREADS = 1024;
-const int PAGESIZE = 12;
-const int COMMSIZE = 6;
+
+KNOB<int> COMMSIZE(KNOB_MODE_WRITEONCE, "pintool", "c", "6", "comm shift in bits");
+KNOB<int> PAGESIZE(KNOB_MODE_WRITEONCE, "pintool", "c", "12", "page size shift in bits");
 
 int num_threads = 0;
 
@@ -185,7 +186,7 @@ void print_numa()
 		cout << endl;
 		num_pages++;
 	}
-	cout << "#threads: " << num_threads << ", total pages: "<< num_pages << ", memory usage: " << num_pages*pow(2,PAGESIZE)/1024 << " KB, nacc: " << endl;
+	cout << "#threads: " << num_threads << ", total pages: "<< num_pages << ", memory usage: " << num_pages*pow(2,(double)PAGESIZE)/1024 << " KB, nacc: " << endl;
 }
 
 
