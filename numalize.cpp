@@ -11,7 +11,7 @@
 const int MAXTHREADS = 1024;
 
 KNOB<int> COMMSIZE(KNOB_MODE_WRITEONCE, "pintool", "c", "6", "comm shift in bits");
-KNOB<int> PAGESIZE(KNOB_MODE_WRITEONCE, "pintool", "c", "12", "page size shift in bits");
+KNOB<int> PAGESIZE(KNOB_MODE_WRITEONCE, "pintool", "p", "12", "page size in bits");
 
 int num_threads = 0;
 
