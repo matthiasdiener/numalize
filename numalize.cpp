@@ -136,7 +136,9 @@ VOID print_matrix()
 {
 	static long n = 0;
 	ofstream f;
-	string fname = to_string(n++) + ".csv";
+	char fname[255];
+
+	sprintf(fname, "%06ld.csv", n++);
 
 	int real_tid[MAXTHREADS+1];
 	int i = 0, a, b;
@@ -147,6 +149,7 @@ VOID print_matrix()
 	cout << fname << endl;
 
 	f.open(fname);
+
 	for (int i = num_threads-1; i>=0; i--) {
 		a = real_tid[i];
 		for (int j = 0; j<num_threads; j++) {
