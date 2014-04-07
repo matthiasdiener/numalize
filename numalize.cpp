@@ -35,8 +35,9 @@ void print_numa();
 VOID mythread(VOID * arg)
 {
 	while(!PIN_IsProcessExiting()) {
-		PIN_Sleep(60000);
+		PIN_Sleep(100);
 		print_matrix();
+		memset(matrix, 0, sizeof(matrix));
 	}
 }
 
