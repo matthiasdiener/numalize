@@ -12,6 +12,7 @@ const int MAXTHREADS = 1024;
 
 KNOB<int> COMMSIZE(KNOB_MODE_WRITEONCE, "pintool", "c", "6", "comm shift in bits");
 KNOB<int> PAGESIZE(KNOB_MODE_WRITEONCE, "pintool", "p", "12", "page size in bits");
+KNOB<int> INTERVAL(KNOB_MODE_WRITEONCE, "pintool", "i", "100", "matrix interval (ms)");
 
 int num_threads = 0;
 
@@ -35,7 +36,7 @@ void print_numa();
 VOID mythread(VOID * arg)
 {
 	while(!PIN_IsProcessExiting()) {
-		PIN_Sleep(100);
+		PIN_Sleep(INTERVAL);
 		print_matrix();
 		memset(matrix, 0, sizeof(matrix));
 	}
