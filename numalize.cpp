@@ -200,6 +200,8 @@ VOID Fini(INT32 code, VOID *v)
 {
 	print_matrix();
 	// print_numa();
+
+	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 }
 
 
@@ -210,6 +212,8 @@ int main(int argc, char *argv[])
 	THREADID t = PIN_SpawnInternalThread(mythread, NULL, 0, NULL);
 	if (t!=1)
 		cerr << "ERROR " << t << endl;
+
+	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 
 	PIN_InitLock(&lock);
 
