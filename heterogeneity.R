@@ -16,7 +16,7 @@ for (i in 1:length(filenames)) {
 	for (i in 1:nt)
 		v <- v + var(d[-nt+1-i,i])
 
-	avg <- sum(data)/nt/nt
+	avg <- sum(as.numeric(unlist(data)))/nt/nt
 
 	# cat("hf_old:", var(data)/sum(data)/nt/nt, "\n")
 	cat("hf_new:", v/nt, "\n")
