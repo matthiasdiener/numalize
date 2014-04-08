@@ -110,5 +110,5 @@ DT[order(excl_round), sum(max), by=excl_round]
 
 # system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
 catn("Exclusivity:", sum(data$max, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%")
-catn("First touch correctness:", sum(data$firsttouch_acc)/sum(data$sum)*100, "%")
+catn("First touch correctness:", sum(data$firsttouch_acc, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%")
 # catn("=> saved pdf in", outfilename)
