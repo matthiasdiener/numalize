@@ -6,7 +6,7 @@ if (length(filenames) < 1)
 	stop("Usage: heterogeneity.R <CommPattern.csv>*\n")
 
 for (i in 1:length(filenames)) {
-	cat(filenames[i], "\n")
+	cat(filenames[i])
 	data <- read.csv(filenames[i], header=F)
 	nt <- length(data)
 
@@ -19,6 +19,6 @@ for (i in 1:length(filenames)) {
 	avg <- sum(as.numeric(unlist(data)))/nt/nt
 
 	# cat("hf_old:", var(data)/sum(data)/nt/nt, "\n")
-	cat("hf_new:", v/nt, "\n")
-	cat("a:", avg, "\n")
+	cat(" ", v/nt)
+	cat(" ", avg, "\n")
 }
