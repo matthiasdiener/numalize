@@ -27,7 +27,6 @@ UINT64 ncomm = 0;
 // UINT64 t_acc [MAXTHREADS];
 
 map<UINT32, UINT32> pidmap;
-PIN_LOCK lock;
 
 void print_matrix();
 void print_numa();
@@ -37,8 +36,8 @@ VOID mythread(VOID * arg)
 {
 	while(!PIN_IsProcessExiting()) {
 		PIN_Sleep(INTERVAL);
-		print_matrix();
-		memset(matrix, 0, sizeof(matrix));
+		// print_matrix();
+		// memset(matrix, 0, sizeof(matrix));
 	}
 }
 
@@ -94,9 +93,9 @@ VOID do_comm(THREADID tid, ADDRINT addr)
 	}
 }
 
-VOID do_numa(THREADID threadid, ADDRINT addr)
+VOID do_numa(THREADID tid, ADDRINT addr)
 {
-	THREADID tid = threadid ? threadid - 1 : threadid;
+	// THREADID tid = threadid ? threadid - 1 : threadid;
 	UINT64 page = addr >> PAGESIZE;
 	if (pagemap[page][MAXTHREADS] == 0)
 		__sync_bool_compare_and_swap(&pagemap[page][MAXTHREADS], 0, tid+1);
@@ -107,8 +106,8 @@ VOID do_numa(THREADID threadid, ADDRINT addr)
 
 VOID memaccess(ADDRINT addr, THREADID tid)
 {
-	do_comm(tid>=2 ? tid-1 : tid, addr);
-	// do_numa(tid, addr);
+	// do_comm(tid>=2 ? tid-1 : tid, addr);
+	do_numa(tid>=2 ? tid-1 : tid, addr);
 }
 
 VOID trace_memory(INS ins, VOID *v)
@@ -138,7 +137,7 @@ VOID print_matrix()
 	ofstream f;
 	char fname[255];
 
-	sprintf(fname, "%06ld.csv", n++);
+	sprintf(fname, "%06ld.comm.csv", n++);
 
 	int real_tid[MAXTHREADS+1];
 	int i = 0, a, b;
@@ -171,35 +170,47 @@ void print_numa()
 	int real_tid[MAXTHREADS+1];
 	int i = 0;
 
+	static long n = 0;
+	ofstream f;
+	char fname[255];
+
+	sprintf(fname, "%06ld.page.csv", n++);
+
+	cout << fname << endl;
+
+	f.open(fname);
+
 	for (auto it : pidmap)
 		real_tid[it.second] = i++;
 
 
 	UINT64 num_pages = 0;
-	cout << "nr, addr, firstacc";
+	f << "nr, addr, firstacc";
 	for (int i = 0; i<num_threads; i++)
-		cout << ", T" << i;
-	cout << endl;
+		f << ", T" << i;
+	f << endl;
 
 
 	for(auto it : pagemap) {
-		cout << num_pages << ", " << it.first << ", " << real_tid[it.second[MAXTHREADS]-1];
+		f << num_pages << ", " << it.first << ", " << real_tid[it.second[MAXTHREADS]-1];
 
 		for (int i=0; i<num_threads; i++)
-			cout << ", " << it.second[real_tid[i]];
+			f << ", " << it.second[real_tid[i]];
 
-		cout << endl;
+		f << endl;
 		num_pages++;
 	}
-	cout << "#threads: " << num_threads << ", total pages: "<< num_pages << ", memory usage: " << num_pages*pow(2,(double)PAGESIZE)/1024 << " KB, nacc: " << endl;
+	cout << "#threads: " << num_threads << ", total pages: "<< num_pages << ", memory usage: " << num_pages*pow(2,(double)PAGESIZE)/1024 << " KB" << endl;
+
+	f.close();
 }
 
 
 
 VOID Fini(INT32 code, VOID *v)
 {
-	print_matrix();
-	// print_numa();
+	// print_matrix();
+	print_numa();
 
 	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 }
@@ -215,9 +226,7 @@ int main(int argc, char *argv[])
 
 	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 
-	PIN_InitLock(&lock);
-
-	pagemap.reserve(1000000); // ~4GByte of mem usage, enough for NAS input C
+	pagemap.reserve(4*1000000); // ~16GByte of mem usage, enough for NAS input C
 	commmap.reserve(100000000);
 
 	PIN_AddThreadStartFunction(ThreadStart, 0);
