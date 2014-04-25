@@ -22,10 +22,6 @@ unordered_map<UINT64, array<UINT64, MAXTHREADS+1>> pagemap;
 
 unordered_map<UINT64, array<UINT32,2>> commmap;
 
-array<UINT64, MAXTHREADS> t_acc;
-UINT64 ncomm = 0;
-// UINT64 t_acc [MAXTHREADS];
-
 map<UINT32, UINT32> pidmap;
 
 void print_matrix();
@@ -38,6 +34,11 @@ VOID mythread(VOID * arg)
 		PIN_Sleep(INTERVAL);
 		// print_matrix();
 		// memset(matrix, 0, sizeof(matrix));
+		print_numa();
+		for(auto it : pagemap) {
+			std::fill( std::begin( it.second ), std::end( it.second ), 0 );
+		}
+		// pagemap.clear();
 	}
 }
 
@@ -54,7 +55,6 @@ VOID do_comm(THREADID tid, ADDRINT addr)
 
 	THREADID a = commmap[line][0];
 	THREADID b = commmap[line][1];
-	// THREADID tid = threadid ? threadid - 1 : threadid;
 
 
 	if (a == 0 && b == 0)
@@ -95,7 +95,6 @@ VOID do_comm(THREADID tid, ADDRINT addr)
 
 VOID do_numa(THREADID tid, ADDRINT addr)
 {
-	// THREADID tid = threadid ? threadid - 1 : threadid;
 	UINT64 page = addr >> PAGESIZE;
 	if (pagemap[page][MAXTHREADS] == 0)
 		__sync_bool_compare_and_swap(&pagemap[page][MAXTHREADS], 0, tid+1);
@@ -200,7 +199,7 @@ void print_numa()
 		f << endl;
 		num_pages++;
 	}
-	cout << "#threads: " << num_threads << ", total pages: "<< num_pages << ", memory usage: " << num_pages*pow(2,(double)PAGESIZE)/1024 << " KB" << endl;
+	// cout << "#threads: " << num_threads << ", total pages: "<< num_pages << ", memory usage: " << num_pages*pow(2,(double)PAGESIZE)/1024 << " KB" << endl;
 
 	f.close();
 }
@@ -210,7 +209,7 @@ void print_numa()
 VOID Fini(INT32 code, VOID *v)
 {
 	// print_matrix();
-	print_numa();
+	// print_numa();
 
 	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 }
@@ -226,7 +225,7 @@ int main(int argc, char *argv[])
 
 	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 
-	pagemap.reserve(4*1000000); // ~16GByte of mem usage, enough for NAS input C
+	pagemap.reserve(3*4*1000000); // ~16GByte of mem usage, enough for NAS input C
 	commmap.reserve(100000000);
 
 	PIN_AddThreadStartFunction(ThreadStart, 0);
