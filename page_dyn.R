@@ -11,11 +11,11 @@ filenames <- args[1:(length(args)-1)]
 
 # cn = data.frame()
 
-i=1
+j=1
 nnodes=4
-nthreads=64
+# nthreads=64
 tpn=16
-ttn <- floor(0:(nthreads-1))/tpn
+# ttn <- floor(0:(nthreads-1))/tpn
 nodes <- paste0("N", 0:(nnodes-1))
 # threads <- paste0("T", 0:(nnodes-1))
 
@@ -29,19 +29,47 @@ for (f in filenames) {
 		data[nodes[i+1]] <- rowSums(data[threads[(i*tpn+1):((i+1)*tpn)]])
 
 
-	data$cn=apply(data[,nodes],1,which.max)
+	# data$cn=apply(data[,nodes], 1, which.max)
+	data$cn = max.col(data[nodes], ties.method="first")
 
-	if (exists("cn"))
-		cn = cbind(cn, data$cn)
-	else
+	if (exists("cn")) {
+		tmp = data.frame(data$addr, data$cn)
+		names(tmp)[1] = "addr"
+		cn = merge(cn, tmp, all=TRUE, by= "addr")
+		names(cn)[ncol(cn)] = j
+	}
+	else {
 		cn =data.frame(data$addr, data$cn)
-	i=i+1
+		names(cn) = c("addr", 1)
+	}
+	j=j+1
 }
 
-# write.csv(cn)
 
 cn= cn[-1]
-# cn= cn[-c(1,2)]
-write.csv(cn)
 
-apply(cn, 1, var)
+
+cnt2 <- function(vec) {
+	cur=0
+	res=vector()
+	for (i in 1:length(vec)) {
+		if (cur != vec[i] && !is.na(vec[i])) {
+			cur = vec[i]
+			res[i] = 1
+		} else {
+			res[i] = 0
+		}
+
+	}
+	res[match(1, res)] = 0
+	return (res)
+}
+
+
+res=apply(cn, 1, cnt2)
+res=data.frame(t(res))
+res[nrow(res)+1,]= colSums(res)
+res$sum <- rowSums(res)
+
+write.csv(res, file="full_page.csv")
+
