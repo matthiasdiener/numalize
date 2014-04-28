@@ -186,15 +186,15 @@ void print_numa()
 	UINT64 num_pages = 0;
 	f << "nr, addr, firstacc";
 	for (int i = 0; i<num_threads; i++)
-		f << ", T" << i;
+		f << ",T" << i;
 	f << endl;
 
 
 	for(auto it : pagemap) {
-		f << num_pages << ", " << it.first << ", " << real_tid[it.second[MAXTHREADS]-1];
+		f << num_pages << "," << it.first << "," << real_tid[it.second[MAXTHREADS]-1];
 
 		for (int i=0; i<num_threads; i++)
-			f << ", " << it.second[real_tid[i]];
+			f << "," << it.second[real_tid[i]];
 
 		f << endl;
 		num_pages++;
