@@ -1,18 +1,21 @@
 #!/usr/bin/env Rscript
 
-paste0 <- function(..., sep = "") paste(..., sep = sep)
+files <- list.files(pattern="\\.page\\.csv$")
 
-files <- list.files(pattern=".page.csv$")
-
-nnodes=4
-tpn=16
-nodes <- paste0("N", 0:(nnodes-1))
+nnodes = 4
 
 addn = function(frame) {
-	threads <- grep("T\\d+", names(frame))
+	threads = grep("T\\d+", names(frame))
+	nthreads = length(threads)
+	tpn = nthreads / nnodes
+	nodes = c((nthreads+4):(nthreads+4+nnodes-1))
+	n = split(threads, ceiling(seq_along(threads)/tpn))
 
-	for (i in 0:(nnodes-1))
-		frame[nodes[i+1]] <- rowSums(frame[threads[(i*tpn+1):((i+1)*tpn)]])
+
+	for (i in 1:length(nodes)) {
+		frame[nodes[i]] = rowSums(frame[unlist(n[i])])
+
+	}
 
 	frame$cn = max.col(frame[nodes], ties.method="first")
 	frame=data.frame(frame$addr, frame$cn)
@@ -23,7 +26,7 @@ tmp=list()
 
 for (i in 1:length(files)) {
 	cat("Reading", files[i])
-	tmp[[i]]=addn(read.csv(files[i]))
+	tmp[[i]] = addn(read.csv(files[i]))
 	cat(" done\n")
 }
 
