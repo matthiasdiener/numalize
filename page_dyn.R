@@ -2,11 +2,10 @@
 
 paste0 <- function(..., sep = "") paste(..., sep = sep)
 
-files <- list.files(pattern=".page.csv")
+files <- list.files(pattern=".page.csv$")
 
 nnodes=4
 tpn=16
-# ttn <- floor(0:(nthreads-1))/tpn
 nodes <- paste0("N", 0:(nnodes-1))
 
 addn = function(frame) {
