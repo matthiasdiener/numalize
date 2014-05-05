@@ -14,6 +14,8 @@ KNOB<int> COMMSIZE(KNOB_MODE_WRITEONCE, "pintool", "c", "6", "comm shift in bits
 KNOB<int> PAGESIZE(KNOB_MODE_WRITEONCE, "pintool", "p", "12", "page size in bits");
 KNOB<int> INTERVAL(KNOB_MODE_WRITEONCE, "pintool", "i", "100", "matrix interval (ms)");
 
+#define COMM
+
 int num_threads = 0;
 
 UINT64 matrix[MAXTHREADS][MAXTHREADS];
@@ -32,13 +34,17 @@ VOID mythread(VOID * arg)
 {
 	while(!PIN_IsProcessExiting()) {
 		PIN_Sleep(INTERVAL);
-		// print_matrix();
-		// memset(matrix, 0, sizeof(matrix));
-		print_numa();
-		for(auto it : pagemap) {
-			std::fill( std::begin( it.second ), std::end( it.second ), 0 );
-		}
-		// pagemap.clear();
+
+		#ifdef COMM
+			print_matrix();
+			memset(matrix, 0, sizeof(matrix));
+		#else
+			print_numa();
+			for(auto it : pagemap) {
+				std::fill( std::begin( it.second ), std::end( it.second ), 0 );
+			}
+			// pagemap.clear();
+		#endif
 	}
 }
 
@@ -105,8 +111,12 @@ VOID do_numa(THREADID tid, ADDRINT addr)
 
 VOID memaccess(ADDRINT addr, THREADID tid)
 {
-	// do_comm(tid>=2 ? tid-1 : tid, addr);
-	do_numa(tid>=2 ? tid-1 : tid, addr);
+	#ifdef COMM
+		do_comm(tid>=2 ? tid-1 : tid, addr);
+	#else
+		do_numa(tid>=2 ? tid-1 : tid, addr);
+	#endif
+
 }
 
 VOID trace_memory(INS ins, VOID *v)
@@ -186,15 +196,15 @@ void print_numa()
 	UINT64 num_pages = 0;
 	f << "nr, addr, firstacc";
 	for (int i = 0; i<num_threads; i++)
-		f << ", T" << i;
+		f << ",T" << i;
 	f << endl;
 
 
 	for(auto it : pagemap) {
-		f << num_pages << ", " << it.first << ", " << real_tid[it.second[MAXTHREADS]-1];
+		f << num_pages << "," << it.first << "," << real_tid[it.second[MAXTHREADS]-1];
 
 		for (int i=0; i<num_threads; i++)
-			f << ", " << it.second[real_tid[i]];
+			f << "," << it.second[real_tid[i]];
 
 		f << endl;
 		num_pages++;
