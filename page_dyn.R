@@ -11,10 +11,10 @@ addn = function(frame) {
 	nodes = c((nthreads+4):(nthreads+4+nnodes-1))
 	n = split(threads, ceiling(seq_along(threads)/tpn))
 
+	cat(" #threads:", nthreads)
 
 	for (i in 1:length(nodes)) {
 		frame[nodes[i]] = rowSums(frame[unlist(n[i])])
-
 	}
 
 	frame$cn = max.col(frame[nodes], ties.method="first")
@@ -27,14 +27,17 @@ tmp=list()
 for (i in 1:length(files)) {
 	cat("Reading", files[i])
 	tmp[[i]] = addn(read.csv(files[i]))
-	cat(" done\n")
+	cat("   done\n")
 }
 
 cn=tmp[[1]]
+cat("\n")
 
 for (i in 2:length(tmp)) {
+	cat("Merging file", i)
 	cn=merge(cn, tmp[[i]], all=T, by=1)
 	names(cn)[ncol(cn)] = i
+	cat("   done\n")
 }
 
 
