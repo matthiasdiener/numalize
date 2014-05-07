@@ -1,40 +1,45 @@
 #!/usr/bin/env Rscript
 
-library(data.table)
+library(parallel)
 
-fs <- list.files(pattern="*.comm.csv") 
+fs <- list.files(pattern="^00.*\\.comm\\.csv$")
 
-if (length(fs) < 1)
-	stop("Usage: phases.R <CommPattern.csv>*\n")
-
-l=c()
-
-for (f in fs) {
-	cat(f, "\n")
-
-	d <- fread(f, header=F)
-	#d=scan("~/Dropbox/CommP/bt.csv", sep=",", quiet=T, multi.line=F)
-	nt <- length(d)
-
-	# d <- (data / max(data)) * 100
-	# d[d<30] <- 0
-	d[d>30] <- 100
-
-	#v <- 0
-	#for (i in 1:nt) {
-#		v <- v + var(d[-nt+1-i,i])
-		# print (var(d[-nt+1-i,i]))
-	#}
-	v=sum(apply(d,1,var))
-
-	l=append(l, v/nt)
-	# avg <- sum(as.numeric(unlist(data)))/nt/nt
-
-	# cat("hf_old:", var(data)/sum(data)/nt/nt, "\n")
-
-	# cat(" ", v/nt, "\n")
-	# cat(" ", avg, "\n")
+doit = function(x) {
+	f = read.csv(x, header=F, quote="", colClasses="integer")
+	f[f>30] = 100
+	return (sum(apply(f, 1, var)))
 }
+
+# l = mclapply(fs, read.csv, header=F, quote="", colClasses="integer")
+l = mclapply(fs, doit, mc.cores=4)
+
+# for (i in 1:length(fs)) {
+# 	cat(fs[i], "\n")
+
+# 	l[[i]] = read.csv(fs[i], header=F, quote="", colClasses="integer")
+# 	# d=data.frame(scan("~/Dropbox/CommP/bt.csv", sep=",", quiet=T, multi.line=F))
+# # 	nt <- length(d)
+
+# # 	# d <- (data / max(data)) * 100
+# # 	# d[d<30] <- 0
+# 	# l[[i]][l[[i]]>30] <- 100
+
+# # 	#v <- 0
+# # 	#for (i in 1:nt) {
+# # #		v <- v + var(d[-nt+1-i,i])
+# # 		# print (var(d[-nt+1-i,i]))
+# # 	#}
+# # 	v=sum(apply(d,1,var))
+
+# # 	l=append(l, v/nt)
+# 	# avg <- sum(as.numeric(unlist(data)))/nt/nt
+
+# 	# cat("hf_old:", var(data)/sum(data)/nt/nt, "\n")
+
+# 	# cat(" ", v/nt, "\n")
+# 	# cat(" ", avg, "\n")
+# }
+
 
 # cat (min(l), max(l), var(l))
 
