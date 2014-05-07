@@ -5,6 +5,7 @@ library(parallel)
 fs <- list.files(pattern="^00.*\\.comm\\.csv$")
 
 read_scale = function(x) {
+	cat(x, "\n")
 	f = read.csv(x, header=F, quote="", colClasses="integer")
 	f[f>30] = 100
 	return (sum(apply(f, 1, var))/length(f))
