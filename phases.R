@@ -2,7 +2,7 @@
 
 library(parallel)
 
-fs <- list.files(pattern="\\.comm\\.csv$")
+fs <- list.files(pattern="^00.*\\.comm\\.csv$")
 
 read_scale = function(x) {
 	f = read.csv(x, header=F, quote="", colClasses="integer")
@@ -10,27 +10,23 @@ read_scale = function(x) {
 	return (sum(apply(f, 1, var))/length(f))
 }
 
-l = mclapply(fs, read_scale, mc.cores=4)
+het = mclapply(fs, read_scale, mc.cores=4)
 
-xx=split(unlist(l), ceiling(seq_along(l)/50))
+het_split=split(unlist(het), ceiling(seq_along(het)/50))
 
-
-m=c()
-
-for (x in xx)
-	m=append(m, mean(x))
+het_mean = lapply(het_split, mean)
 
 xold=0
 n=0
-for (x in m) {
-	print(x)
+
+for (x in het_mean) {
+	cat(x, " ")
 	if (is.na(x)) next
 	if (findInterval(x, c(xold/1.2, xold*1.2)) == 0){
-
-		print("new phase")
+		cat("new phase ")
 		n=n+1
 	}
 	xold=x
 
 }
-cat ("n= ", n, "\n")
+cat ("\nn=", n, "\n")
