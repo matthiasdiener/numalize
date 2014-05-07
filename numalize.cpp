@@ -14,7 +14,7 @@ KNOB<int> COMMSIZE(KNOB_MODE_WRITEONCE, "pintool", "c", "6", "comm shift in bits
 KNOB<int> PAGESIZE(KNOB_MODE_WRITEONCE, "pintool", "p", "12", "page size in bits");
 KNOB<int> INTERVAL(KNOB_MODE_WRITEONCE, "pintool", "i", "100", "matrix interval (ms)");
 
-#define COMM
+// #define COMM
 
 int num_threads = 0;
 
@@ -218,8 +218,11 @@ void print_numa()
 
 VOID Fini(INT32 code, VOID *v)
 {
-	// print_matrix();
-	// print_numa();
+	#ifdef COMM
+		print_matrix();
+	#else
+		print_numa();
+	#endif
 
 	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 }
