@@ -11,7 +11,7 @@ addn = function(frame) {
 	nodes = c((nthreads+4):(nthreads+4+nnodes-1))
 	n = split(threads, ceiling(seq_along(threads)/tpn))
 
-	cat(" #threads:", nthreads)
+	cat("\t#threads:", nthreads)
 
 	for (i in 1:length(nodes)) {
 		frame[nodes[i]] = rowSums(frame[unlist(n[i])])
@@ -19,25 +19,26 @@ addn = function(frame) {
 
 	frame$cn = max.col(frame[nodes], ties.method="first")
 	frame=data.frame(frame$addr, frame$cn)
+	frame = frame[!duplicated(frame[,1]),]
 	return(frame)
 }
 
 tmp=list()
 
 for (i in 1:length(files)) {
-	cat("Reading", files[i])
+	cat("Reading ", files[i], " (", i, "/" ,length(files), ")", sep="")
 	tmp[[i]] = addn(read.csv(files[i]))
-	cat("   done\n")
+	cat("\tdone\n")
 }
 
 cn=tmp[[1]]
-cat("\n")
 
 for (i in 2:length(tmp)) {
-	cat("Merging file", i)
+	cat("Merging file ", i, "/", length(tmp), sep="")
 	cn=merge(cn, tmp[[i]], all=T, by=1)
 	names(cn)[ncol(cn)] = i
-	cat("   done\n")
+	# cat (max(table(cn[,1])))
+	cat("\tdone\n")
 }
 
 
