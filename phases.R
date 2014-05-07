@@ -7,7 +7,7 @@ fs <- list.files(pattern="^00.*\\.comm\\.csv$")
 doit = function(x) {
 	f = read.csv(x, header=F, quote="", colClasses="integer")
 	f[f>30] = 100
-	return (sum(apply(f, 1, var)))
+	return (sum(apply(f, 1, var))/length(f))
 }
 
 # l = mclapply(fs, read.csv, header=F, quote="", colClasses="integer")
