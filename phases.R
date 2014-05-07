@@ -43,7 +43,7 @@ l = mclapply(fs, doit, mc.cores=4)
 
 # cat (min(l), max(l), var(l))
 
-xx=split(l, ceiling(seq_along(l)/50))
+xx=split(unlist(l), ceiling(seq_along(l)/50))
 
 
 m=c()
