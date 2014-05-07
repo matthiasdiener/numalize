@@ -2,7 +2,7 @@
 
 library(parallel)
 
-fs <- list.files(pattern="^00.*\\.comm\\.csv$")
+fs <- list.files(pattern="\\.comm\\.csv$")
 
 read_scale = function(x) {
 	f = read.csv(x, header=F, quote="", colClasses="integer")
