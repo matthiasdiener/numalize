@@ -2,16 +2,19 @@
 
 library(parallel)
 
-fs <- list.files(pattern="^00.*\\.comm\\.csv$")
+options(mc.cores= as.numeric(system("grep 'processor' /proc/cpuinfo | sort | uniq | wc -l", intern=TRUE)))
+
+fs <- list.files(pattern="\\.comm\\.csv$")
 
 read_scale = function(x) {
-	cat(x, "\n")
+	if (grepl("000\\.comm\\.csv$", x))
+		cat (x, "\n")
 	f = read.csv(x, header=F, quote="", colClasses="integer")
 	f[f>30] = 100
 	return (sum(apply(f, 1, var))/length(f))
 }
 
-het = mclapply(fs, read_scale, mc.cores=4)
+het = mclapply(fs, read_scale)
 
 het_split=split(unlist(het), ceiling(seq_along(het)/50))
 
