@@ -10,10 +10,3 @@ for bm in bt cg dc ep is ft lu mg sp ua; do
 	done
 done
 
-
-# check csv files for double entries
-for f in *.csv; do
-	echo $f
-	cat $f | awk '{print $2}' | sort | uniq -d
-done
-
