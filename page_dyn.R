@@ -4,6 +4,8 @@ files <- list.files(pattern="\\.page\\.csv$")
 
 nnodes = 4
 
+excl = c()
+
 addn = function(frame) {
 	threads = grep("T\\d+", names(frame))
 	nthreads = length(threads)
@@ -17,9 +19,14 @@ addn = function(frame) {
 		frame[nodes[i]] = rowSums(frame[unlist(n[i])])
 	}
 
+	frame$sum = rowSums(frame[nodes])
+	frame$max = do.call(pmax, frame[nodes])
+	excl <<- c(excl, sum(frame$max, na.rm=TRUE)/sum(frame$sum, na.rm=TRUE)*100)
+
 	frame$cn = max.col(frame[nodes], ties.method="first")
-	frame=data.frame(frame$addr, frame$cn)
+	frame = data.frame(frame$addr, frame$cn)
 	frame = frame[!duplicated(frame[,1]),]
+
 	return(frame)
 }
 
@@ -35,7 +42,7 @@ cn=tmp[[1]]
 
 for (i in 2:length(tmp)) {
 	cat("Merging file ", i, "/", length(tmp), sep="")
-	cn=merge(cn, tmp[[i]], all=T, by=1)
+	cn = merge(cn, tmp[[i]], all=T, by=1)
 	names(cn)[ncol(cn)] = i
 	# cat (max(table(cn[,1])))
 	cat("\tdone\n")
@@ -62,9 +69,18 @@ cnt2 <- function(vec) {
 }
 
 
-res=apply(cn, 1, cnt2)
-res=data.frame(t(res))
-res[nrow(res)+1,]= colSums(res)
-res$sum <- rowSums(res)
+res = apply(cn, 1, cnt2)
+res = data.frame(t(res))
+res[nrow(res)+1,] = colSums(res)
+res$sum = rowSums(res)
+
+excl=c(excl, 0)
+
+res = rbind(res, excl)
+
+row.names(res)[nrow(res)] = "excl"
+row.names(res)[nrow(res)-1] = "nmig"
 
 write.csv(res, file="page_dyn.csv")
+
+cat("Created file page_dyn.csv")
