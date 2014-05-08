@@ -67,5 +67,4 @@ res=data.frame(t(res))
 res[nrow(res)+1,]= colSums(res)
 res$sum <- rowSums(res)
 
-write.csv(res, file="full.csv")
-
+write.csv(res, file="page_dyn.csv")
