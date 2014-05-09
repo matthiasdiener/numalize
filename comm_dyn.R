@@ -12,6 +12,8 @@ options(mc.cores=max(as.numeric(system("grep 'processor' /proc/cpuinfo | sort | 
 
 
 comm_het = function(frame) {
+	if (length(frame) < 8)
+		return(0)
 	frame = frame / max(frame, na.rm=T) * 100
 	frame[frame>30] = 100
 	return(mean(apply(frame, 1, var, na.rm=T)))
