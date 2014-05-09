@@ -3,6 +3,10 @@
 split=500
 files = list.files(pattern="\\.comm\\.csv$")
 
+args <- commandArgs(trailingOnly=TRUE)
+if (length(args) > 0)
+	files = args
+
 library(parallel)
 options(mc.cores=as.numeric(system("grep 'processor' /proc/cpuinfo | sort | uniq | wc -l", intern=TRUE)))
 
