@@ -8,9 +8,9 @@ options(mc.cores=as.numeric(system("grep 'processor' /proc/cpuinfo | sort | uniq
 
 
 comm_het = function(frame) {
-	frame = frame / max(frame) * 100
+	frame = frame / max(frame, na.rm=T) * 100
 	frame[frame>30] = 100
-	return(sum(apply(frame, 1, var))/length(frame))
+	return(mean(apply(frame, 1, var, na.rm=T)))
 }
 
 comm_avg = function(frame)
