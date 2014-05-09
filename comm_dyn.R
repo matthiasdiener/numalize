@@ -1,20 +1,29 @@
 #!/usr/bin/env Rscript
 
 split=500
+files = list.files(pattern="\\.comm\\.csv$")
 
 library(parallel)
-
 options(mc.cores=as.numeric(system("grep 'processor' /proc/cpuinfo | sort | uniq | wc -l", intern=TRUE)))
 
-files <- list.files(pattern="\\.comm\\.csv$")
+
+comm_het = function(frame) {
+	frame = frame / max(frame) * 100
+	frame[frame>30] = 100
+	return(sum(apply(frame, 1, var))/length(frame))
+}
+
+comm_avg = function(frame)
+	return(sum(as.numeric(unlist(frame)))/length(frame)/length(frame))
+
 
 read_het_avg = function(file) {
-	if (grepl("000\\.comm\\.csv$", file)) {
-		cat ("Reading", file, format(Sys.time(), "%H:%M:%S"), "\n")
-	}
 	f = read.csv(file, header=F, quote="", colClasses="integer")
-	f[f>30] = 100
-	return(list(het=sum(apply(f, 1, var))/length(f), avg=sum(as.numeric(unlist(f)))/length(f) ))
+
+	if (grepl("000\\.comm\\.csv$", file))
+		cat ("Reading", file, " #threads", length(f), format(Sys.time(), " %H:%M:%S"), "\n")
+
+	return(list(het=comm_het(f), avg=comm_avg(f) ))
 }
 
 res = mclapply(files, read_het_avg)
@@ -44,12 +53,12 @@ cat ("\nn=", n, "\n")
 
 write.csv(data.frame(het, avg), "comm_dyn.csv")
 
-png("comm_dyn.png", width=960, res=100)
+png("comm_dyn.png", width=1920, res=100)
 
-plot(unlist(het), pch=".", ylim=c(0,max(unlist(het),unlist(avg), na.rm=T)+100), xlab="Time", ylab="Het / Avg", col="gray")
-points(seq(1, length(het_mean)*split, split), unlist(het_mean), pch=20, col="black")
+plot(unlist(het), pch=".", ylim=c(0,max(unlist(het),unlist(avg), na.rm=T)+100), xlab="Time", ylab="Het / Avg", col="gray", xlim=c(-5,length(het)))
+# points(seq(1, length(het_mean)*split, split), unlist(het_mean), pch=20, col="black")
 
 points(unlist(avg), pch=".", col="lightgreen")
-points(seq(1, length(avg_mean)*split, split), unlist(avg_mean), pch=20, col="green")
+# points(seq(1, length(avg_mean)*split, split), unlist(avg_mean), pch=20, col="green")
 
 garbage <- dev.off()
