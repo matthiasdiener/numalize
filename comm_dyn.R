@@ -8,7 +8,7 @@ if (length(args) > 0)
 	files = args
 
 library(parallel)
-options(mc.cores=as.numeric(system("grep 'processor' /proc/cpuinfo | sort | uniq | wc -l", intern=TRUE)))
+options(mc.cores=max(as.numeric(system("grep 'processor' /proc/cpuinfo | sort | uniq | wc -l", intern=TRUE)), 4) )
 
 
 comm_het = function(frame) {
