@@ -2,18 +2,12 @@
 
 library(data.table)
 
-paste0 = function(..., sep = "") paste(..., sep = sep)
-catn = function(...) cat(..., "\n")
+args = commandArgs(trailingOnly=T)
+if (length(args) != 2)
+	stop("Usage: mkPageUp.R <page.csv> <#nodes>\n")
 
-# Get command line arguments
-args = commandArgs(trailingOnly=TRUE)
-if (length(args) < 2)
-	stop("Usage: mkPageUp.R <page.csv>... <#nodes>\n")
-
-filenames = args[1:(length(args)-1)]
-nnodes = as.numeric(args[length(args)])
-
-data = read.csv(filenames[1])
+data = read.csv(args[1])
+nnodes = as.numeric(args[2])
 
 # data$addr = data$addr %/% 512
 # data=data.table(data)
@@ -24,28 +18,29 @@ data = read.csv(filenames[1])
 
 threads = grep("T\\d+", names(data))
 nthreads = length(threads)
-
-if (nnodes > nthreads)
-	nnodes = nthreads
-
-nodes = paste0("N", 0:(nnodes-1))
 tpn = nthreads / nnodes
+nodes=c((ncol(data)+1):(ncol(data)+nnodes))
+n = split(threads, ceiling(seq_along(threads)/tpn))
 
-catn("#nodes:", nnodes, "  #threads:", nthreads, "  #threads per node:", tpn)
+ttn=c()
+for (i in 1:length(n)) ttn[n[[i]]-3] = i
 
-# Total number of memory accesses
-data$sum = rowSums(data[threads])
 
-# Number of accesses per node
-for (i in 0:(nnodes-1))
-	data[nodes[i+1]] = rowSums(data[threads[(i*tpn+1):((i+1)*tpn)]])
+for (i in 1:length(nodes))
+	data[nodes[i]] = rowSums(data[unlist(n[i])])
 
-# Highest number of accesses
+data = data[-threads]
+data = data[-c(1:2)]
+
+nodes = c(2:ncol(data))
+
+data$sum = rowSums(data[nodes])
 data$max = do.call(pmax, data[nodes])
 
+cat("#nodes:", nnodes, "  #threads:", nthreads, "  #threads per node:", tpn, "\n")
+
 # first-touch correctness
-data$correct_node = max.col(data[nodes], "first")-1
-ttn = ceiling((threads-3)/tpn)-1
+data$correct_node = max.col(data[nodes], "first")
 data$first_node = ttn[data$firstacc+1]
 data$firsttouch_acc = (data$correct_node == data$first_node) * data$sum
 
@@ -55,10 +50,11 @@ excl_min = ceiling(100/nnodes/10) * 10
 
 # Round exclusivity and put >, < and %
 data$excl_round = pmax(pmin(round(data$excl/10)*10, 90), excl_min)
-data$excl_round = paste0(ifelse(data$excl_round==excl_min,"<",""), ifelse(data$excl_round=="90",">",""), data$excl_round, "%")
+data$excl_round = paste(ifelse(data$excl_round==excl_min,"<",""), ifelse(data$excl_round=="90",">",""), data$excl_round, "%", sep="")
 
 DT = data.table(data)
 DT[order(excl_round), sum(max), by=excl_round]
 
-catn("Exclusivity:", sum(data$max, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%")
-catn("First touch correctness:", sum(data$firsttouch_acc, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%")
+cat("App Exclusivity:", sum(data$max, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%\n")
+cat("First touch correctness (pages):", sum((data$correct_node == data$first_node))/nrow(data)*100, "%\n")
+cat("First touch correctness (scaled):", sum(data$firsttouch_acc, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%\n")
