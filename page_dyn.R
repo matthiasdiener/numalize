@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-files <- list.files(pattern="\\.page\\.csv$")
+files = list.files(pattern="\\.page\\.csv$")
 
 nnodes = 4
 
@@ -52,7 +52,7 @@ for (i in 2:length(tmp)) {
 cn= cn[-1]
 
 
-cnt2 <- function(vec) {
+cnt2 = function(vec) {
 	cur=0
 	res=vector()
 	for (i in 1:length(vec)) {
