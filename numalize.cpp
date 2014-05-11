@@ -10,11 +10,13 @@
 
 const int MAXTHREADS = 1024;
 
-KNOB<int> COMMSIZE(KNOB_MODE_WRITEONCE, "pintool", "c", "6", "comm shift in bits");
-KNOB<int> PAGESIZE(KNOB_MODE_WRITEONCE, "pintool", "p", "12", "page size in bits");
-KNOB<int> INTERVAL(KNOB_MODE_WRITEONCE, "pintool", "i", "100", "matrix interval (ms)");
+KNOB<int> COMMSIZE(KNOB_MODE_WRITEONCE, "pintool", "cs", "6", "comm shift in bits");
+KNOB<int> PAGESIZE(KNOB_MODE_WRITEONCE, "pintool", "ps", "12", "page size in bits");
+KNOB<int> INTERVAL(KNOB_MODE_WRITEONCE, "pintool", "i", "0", "print interval (ms) (0=disable)");
 
-// #define COMM
+KNOB<bool> DOCOMM(KNOB_MODE_WRITEONCE, "pintool", "c", "0", "enable comm detection");
+KNOB<bool> DOPAGE(KNOB_MODE_WRITEONCE, "pintool", "p", "0", "enable comm detection");
+
 
 int num_threads = 0;
 
@@ -33,18 +35,24 @@ void print_numa();
 VOID mythread(VOID * arg)
 {
 	while(!PIN_IsProcessExiting()) {
-		PIN_Sleep(INTERVAL);
+		if (INTERVAL == 0) {
+			PIN_Sleep(100);
+			continue;
+		} else {
+			PIN_Sleep(INTERVAL);
+		}
 
-		#ifdef COMM
+		if (DOCOMM) {
 			print_matrix();
 			memset(matrix, 0, sizeof(matrix));
-		#else
+		}
+		if (DOPAGE) {
 			print_numa();
 			for(auto it : pagemap) {
 				std::fill( std::begin( it.second ), std::end( it.second ), 0 );
 			}
 			// pagemap.clear();
-		#endif
+		}
 	}
 }
 
@@ -111,12 +119,10 @@ VOID do_numa(THREADID tid, ADDRINT addr)
 
 VOID memaccess(ADDRINT addr, THREADID tid)
 {
-	#ifdef COMM
+	if (DOCOMM)
 		do_comm(tid>=2 ? tid-1 : tid, addr);
-	#else
+	if (DOPAGE)
 		do_numa(tid>=2 ? tid-1 : tid, addr);
-	#endif
-
 }
 
 VOID trace_memory(INS ins, VOID *v)
@@ -218,11 +224,10 @@ void print_numa()
 
 VOID Fini(INT32 code, VOID *v)
 {
-	#ifdef COMM
+	if (DOCOMM)
 		print_matrix();
-	#else
+	if (DOPAGE)
 		print_numa();
-	#endif
 
 	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 }
