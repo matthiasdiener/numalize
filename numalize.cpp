@@ -8,7 +8,7 @@
 
 #include "pin.H"
 
-const int MAXTHREADS = 1024;
+const int MAXTHREADS = 64;
 
 KNOB<int> COMMSIZE(KNOB_MODE_WRITEONCE, "pintool", "cs", "6", "comm shift in bits");
 KNOB<int> PAGESIZE(KNOB_MODE_WRITEONCE, "pintool", "ps", "12", "page size in bits");
@@ -48,10 +48,8 @@ VOID mythread(VOID * arg)
 		}
 		if (DOPAGE) {
 			print_numa();
-			for(auto it : pagemap) {
-				std::fill( std::begin( it.second ), std::end( it.second ), 0 );
-			}
-			// pagemap.clear();
+			for(auto it : pagemap)
+				fill(begin(it.second), end(it.second), 0);
 		}
 	}
 }
@@ -62,9 +60,10 @@ VOID inc_comm(int a, int b) {
 		matrix[a][b-1]++;
 }
 
-VOID do_comm(THREADID tid, ADDRINT addr)
+VOID do_comm(ADDRINT addr, THREADID tid)
 {
 	UINT64 line = addr >> COMMSIZE;
+	tid = tid>=2 ? tid-1 : tid;
 	int sh = 1;
 
 	THREADID a = commmap[line][0];
@@ -72,9 +71,9 @@ VOID do_comm(THREADID tid, ADDRINT addr)
 
 
 	if (a == 0 && b == 0)
-		sh= 0;
+		sh = 0;
 	if (a != 0 && b != 0)
-		sh= 2;
+		sh = 2;
 
 	switch (sh) {
 		case 0: /* no one accessed line before, store accessing thread in pos 0 */
@@ -107,9 +106,11 @@ VOID do_comm(THREADID tid, ADDRINT addr)
 	}
 }
 
-VOID do_numa(THREADID tid, ADDRINT addr)
+VOID do_numa(ADDRINT addr, THREADID tid)
 {
 	UINT64 page = addr >> PAGESIZE;
+	tid = tid>=2 ? tid-1 : tid;
+
 	if (pagemap[page][MAXTHREADS] == 0)
 		__sync_bool_compare_and_swap(&pagemap[page][MAXTHREADS], 0, tid+1);
 
@@ -117,25 +118,28 @@ VOID do_numa(THREADID tid, ADDRINT addr)
 }
 
 
-VOID memaccess(ADDRINT addr, THREADID tid)
+VOID trace_memory_comm(INS ins, VOID *v)
 {
-	if (DOCOMM)
-		do_comm(tid>=2 ? tid-1 : tid, addr);
-	if (DOPAGE)
-		do_numa(tid>=2 ? tid-1 : tid, addr);
+	if (INS_IsMemoryRead(ins))
+		INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)do_comm, IARG_MEMORYREAD_EA, IARG_THREAD_ID, IARG_END);
+
+	if (INS_HasMemoryRead2(ins))
+		INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)do_comm, IARG_MEMORYREAD2_EA, IARG_THREAD_ID, IARG_END);
+
+	if (INS_IsMemoryWrite(ins))
+		INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)do_comm, IARG_MEMORYWRITE_EA, IARG_THREAD_ID, IARG_END);
 }
 
-VOID trace_memory(INS ins, VOID *v)
+VOID trace_memory_page(INS ins, VOID *v)
 {
-	if (INS_IsMemoryRead(ins)) {
-		INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)memaccess, IARG_MEMORYREAD_EA, IARG_THREAD_ID, IARG_END);
-	}
-	if (INS_HasMemoryRead2(ins)) {
-		INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)memaccess, IARG_MEMORYREAD2_EA, IARG_THREAD_ID, IARG_END);
-	}
-	if (INS_IsMemoryWrite(ins)) {
-		INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)memaccess, IARG_MEMORYWRITE_EA, IARG_THREAD_ID, IARG_END);
-	}
+	if (INS_IsMemoryRead(ins))
+		INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)do_numa, IARG_MEMORYREAD_EA, IARG_THREAD_ID, IARG_END);
+
+	if (INS_HasMemoryRead2(ins))
+		INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)do_numa, IARG_MEMORYREAD2_EA, IARG_THREAD_ID, IARG_END);
+
+	if (INS_IsMemoryWrite(ins))
+		INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)do_numa, IARG_MEMORYWRITE_EA, IARG_THREAD_ID, IARG_END);
 }
 
 
@@ -198,24 +202,20 @@ void print_numa()
 	for (auto it : pidmap)
 		real_tid[it.second] = i++;
 
-
-	UINT64 num_pages = 0;
 	f << "nr, addr, firstacc";
 	for (int i = 0; i<num_threads; i++)
 		f << ",T" << i;
-	f << endl;
+	f << "\n";
 
 
 	for(auto it : pagemap) {
-		f << num_pages << "," << it.first << "," << real_tid[it.second[MAXTHREADS]-1];
+		f << "0," << it.first << "," << real_tid[it.second[MAXTHREADS]-1];
 
 		for (int i=0; i<num_threads; i++)
 			f << "," << it.second[real_tid[i]];
 
-		f << endl;
-		num_pages++;
+		f << "\n";
 	}
-	// cout << "#threads: " << num_threads << ", total pages: "<< num_pages << ", memory usage: " << num_pages*pow(2,(double)PAGESIZE)/1024 << " KB" << endl;
 
 	f.close();
 }
@@ -249,12 +249,17 @@ int main(int argc, char *argv[])
 
 	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 
-	pagemap.reserve(3*4*1000000); // ~16GByte of mem usage, enough for NAS input C
-	commmap.reserve(100000000);
+	if (DOPAGE) {
+		pagemap.reserve(3*4*1000000); // ~16GByte of mem usage, enough for NAS input C
+		INS_AddInstrumentFunction(trace_memory_page, 0);
+	}
+
+	if (DOCOMM) {
+		commmap.reserve(4*100000000);
+		INS_AddInstrumentFunction(trace_memory_comm, 0);
+	}
 
 	PIN_AddThreadStartFunction(ThreadStart, 0);
-	INS_AddInstrumentFunction(trace_memory, 0);
-
 	PIN_AddFiniFunction(Fini, 0);
 
 	PIN_StartProgram();
