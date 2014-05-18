@@ -15,7 +15,7 @@ KNOB<int> PAGESIZE(KNOB_MODE_WRITEONCE, "pintool", "ps", "12", "page size in bit
 KNOB<int> INTERVAL(KNOB_MODE_WRITEONCE, "pintool", "i", "0", "print interval (ms) (0=disable)");
 
 KNOB<bool> DOCOMM(KNOB_MODE_WRITEONCE, "pintool", "c", "0", "enable comm detection");
-KNOB<bool> DOPAGE(KNOB_MODE_WRITEONCE, "pintool", "p", "0", "enable comm detection");
+KNOB<bool> DOPAGE(KNOB_MODE_WRITEONCE, "pintool", "p", "0", "enable page usage detection");
 
 
 int num_threads = 0;
@@ -236,6 +236,12 @@ VOID Fini(INT32 code, VOID *v)
 int main(int argc, char *argv[])
 {
 	if (PIN_Init(argc,argv)) return 1;
+
+	if (!DOCOMM && !DOPAGE) {
+		cerr << "Error: need to choose at least one of communication (-c) or page usage (-p) detection" << endl;
+    	cerr << endl << KNOB_BASE::StringKnobSummary() << endl;
+    	return 1;
+	}
 
 	THREADID t = PIN_SpawnInternalThread(mythread, NULL, 0, NULL);
 	if (t!=1)
