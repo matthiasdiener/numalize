@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 
+options("scipen"=1000)
+
 library(data.table)
 
 args = commandArgs(trailingOnly=T)
@@ -46,6 +48,7 @@ data$firsttouch_acc = (data$correct_node == data$first_node) * data$sum
 
 # Exclusivity
 data$excl = data$max / data$sum * 100
+data$excl[is.na(data$excl)] = 100
 excl_min = ceiling(100/nnodes/10) * 10
 
 # Round exclusivity and put >, < and %
@@ -55,6 +58,6 @@ data$excl_round = paste(ifelse(data$excl_round==excl_min,"<",""), ifelse(data$ex
 DT = data.table(data)
 DT[order(excl_round), sum(max), by=excl_round]
 
-cat("App Exclusivity:", sum(data$max, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%\n")
+cat("\nApp Exclusivity:", sum(data$max, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%\n")
 cat("First touch correctness (pages):", sum((data$correct_node == data$first_node))/nrow(data)*100, "%\n")
 cat("First touch correctness (scaled):", sum(data$firsttouch_acc, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%\n")
