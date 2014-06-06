@@ -5,16 +5,7 @@
 #
 ##############################################################
 
-#MAX_THREADS=64
-# WITH_LOCKS=0
-
-# include ../../libmapping-sammu-pin/make.config.sammupin
-# include ../../libmapping-sammu-pin/make.macros
-
 TOOL_CXXFLAGS += -Wall -g -std=c++0x -Wno-error
-
-# TOOL_LIBS += ../../libmapping-sammu-pin/libmapping-nocons.a
-
 TOOL_LDFLAGS += -Wl,-rpath,/opt/pin/intel64/runtime
 
 ##############################################################
