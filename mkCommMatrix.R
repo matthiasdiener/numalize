@@ -3,6 +3,8 @@
 library(lattice)
 library(data.table)
 
+cleardiag = 1
+
 args = commandArgs(trailingOnly=TRUE)
 
 if (length(args) < 1)
@@ -22,6 +24,10 @@ for (i in 1:length(args)) {
 
 	mat = data.matrix(csv)
 	mat = t(mat[nrow(mat):1,])
+
+	if (cleardiag==1)
+		for (i in 1:nt)
+			mat[i,i] = 0
 
 	pdf(outfilename)
 	print(levelplot(mat, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab="", ylab="", scales=list(x=list(cex=1.5,at=seq(1,nt,5)), y=list(cex=1.5,at=seq(1,nt,5)))))
