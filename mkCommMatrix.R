@@ -1,8 +1,6 @@
 #!/usr/bin/env Rscript
 
 library(lattice)
-library(data.table)
-suppressPackageStartupMessages(library(bit64))
 
 cleardiag = 1
 
@@ -17,7 +15,7 @@ for (i in 1:length(args)) {
 	if (filename == outfilename)
 		outfilename = paste(filename, ".pdf", sep="")
 
-	csv = as.data.frame(fread(filename, header=FALSE))
+	csv = as.data.frame(read.csv(filename, header=FALSE))
 	nt = ncol(csv)
 
 	rownames(csv) = rev(as.integer(rownames(csv)) - 1)
