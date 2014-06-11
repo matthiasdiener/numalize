@@ -2,6 +2,7 @@
 
 library(lattice)
 library(data.table)
+suppressPackageStartupMessages(library(bit64))
 
 args = commandArgs(trailingOnly=TRUE)
 
