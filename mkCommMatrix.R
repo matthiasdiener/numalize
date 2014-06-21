@@ -28,9 +28,11 @@ for (i in 1:length(args)) {
 		for (i in 1:nt)
 			mat[i,i] = 0
 
-	pdf(outfilename)
+	pdf(outfilename, family="NimbusSan")
 	print(levelplot(mat, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab="", ylab="", scales=list(x=list(cex=1.5,at=seq(1,nt,5)), y=list(cex=1.5,at=seq(1,nt,5)))))
 	garbage <- dev.off()
+
+	embedFonts(outfilename)
 
 	system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
 
