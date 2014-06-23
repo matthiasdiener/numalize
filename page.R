@@ -1,7 +1,6 @@
 #!/usr/bin/env Rscript
 
 options("scipen"=1000)
-
 library(data.table)
 
 args = commandArgs(trailingOnly=T)
@@ -50,16 +49,16 @@ data$firsttouch_acc = (data$correct_node == data$first_node) * data$sum
 num_pages = nrow(data)
 data$rr_node = rep_len(c(1:nnodes), num_pages)
 
-cat("memory balance (pages), first-touch\n")
+cat("memory balance (pages), first-touch")
 table(data$first_node)
-cat("memory balance (pages), correct_node\n")
+cat("memory balance (pages), correct_node")
 table(data$correct_node)
-cat("memory balance (pages), rr_node\n")
+cat("memory balance (pages), rr_node")
 table(data$rr_node)
 
-total=sum(data$sum)
+total = sum(data$sum)
 
-cat("memory balance (accesses), first-touch\n")
+cat("\nmemory balance (accesses), first-touch\n")
 for (i in 1:nnodes)
 	cat(i, sum(data$sum[data$first_node==i])/total*100, "\n")
 
@@ -71,6 +70,7 @@ cat("memory balance (accesses), rr_node\n")
 for (i in 1:nnodes)
 	cat(i, sum(data$sum[data$rr_node==i])/total*100, "\n")
 
+cat("\nExclusivity\n")
 
 # Exclusivity
 data$excl = data$max / data$sum * 100
