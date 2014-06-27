@@ -1,5 +1,13 @@
 #!/usr/bin/env Rscript
 
+# mappings:
+# - rr_node: round-robin mapping of pages to nodes
+# - interleave: rr based on page address (equal to numactl -i all? uses last two bits of page addr to determine node)
+# - locality: put page on node with highest locality
+# - membalance: rr, such that number of memory accesses to all nodes are equal
+# - locality+distribution: locality for pages with high exclusivity, rr for low excl.
+# - random: random assignment
+
 options("scipen"=1000)
 library(data.table)
 
