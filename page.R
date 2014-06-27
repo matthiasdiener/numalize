@@ -5,7 +5,7 @@ library(data.table)
 
 args = commandArgs(trailingOnly=T)
 if (length(args) != 2)
-	stop("Usage: mkPageUp.R <page.csv> <#nodes>\n")
+	stop("Usage: page.R <page.csv> <#nodes>\n")
 
 data = read.csv(args[1])
 nnodes = as.numeric(args[2])
