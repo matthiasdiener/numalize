@@ -10,11 +10,12 @@ if (length(args) != 2)
 data = read.csv(args[1])
 nnodes = as.numeric(args[2])
 
+# for larger pages:
 # data$addr = data$addr %/% 512
-# data=data.table(data)
-# data=data[, lapply(.SD, as.numeric)]
-# data=data[, lapply(.SD, sum), by=addr]
-# data=data.frame(data)
+# data = data.table(data)
+# data = data[, lapply(.SD, as.numeric)]
+# data = data[, lapply(.SD, sum), by=addr]
+# data = data.frame(data)
 
 
 threads = grep("T\\d+", names(data))

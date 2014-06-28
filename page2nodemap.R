@@ -53,3 +53,6 @@ data$rr_node = rep_len(c(1:nnodes), num_pages)
 
 write.table(data[, c("addr", "rr_node")], file=paste(args[1], ".rr", sep=""), row.names=F, col.names=F)
 cat("wrote .rr\n")
+
+write.table(data[, c("addr", "correct_node")], file=paste(args[1], ".local", sep=""), row.names=F, col.names=F)
+cat("wrote .local\n")
