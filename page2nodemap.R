@@ -90,6 +90,8 @@ x$bal_node = 0
 
 total = sum(x$sum)
 
+pb <- txtProgressBar(min = 1, max = num_pages, style = 3)
+
 for (i in 1:num_pages) {
 	n = x[i,'local_node']
 	a = x[i,'addr']
@@ -102,9 +104,10 @@ for (i in 1:num_pages) {
 			j = (j %% nnodes) + 1
 		x[i,'bal_node'] = j
 	}
+	setTxtProgressBar(pb, i)
 }
 
-cat("memory balance (accesses), bal_node\n")
+cat("\nmemory balance (accesses), bal_node\n")
 for (i in 1:nnodes)
 	cat(i, sum(x$sum[x$bal_node==i])/sum(x$sum)*100, "\n")
 
