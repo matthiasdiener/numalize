@@ -90,7 +90,7 @@ x$bal_node = 0
 
 total = sum(x$sum)
 
-pb <- txtProgressBar(min = 1, max = num_pages, style = 3)
+pb = txtProgressBar(min = 1, max = num_pages, style = 3)
 
 for (i in 1:num_pages) {
 	n = x[i,'local_node']
