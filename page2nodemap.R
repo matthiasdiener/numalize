@@ -2,7 +2,7 @@
 
 # mappings:
 # - rr_node: round-robin mapping of pages to nodes
-# - interleave: rr based on page address (equal to numactl -i all? uses last two bits of page addr to determine node)
+# - interleave: rr based on page address (equal to numactl -i all? uses last bits of page addr to determine node)
 # - locality: put page on node with highest locality
 # - membalance: rr, such that number of memory accesses to all nodes are equal
 # - locality+distribution: locality for pages with high exclusivity, rr for low excl.
@@ -11,11 +11,11 @@
 options("scipen"=1000)
 
 args = commandArgs(trailingOnly=T)
-if (length(args) != 1)
-	stop("Usage: page2nodemap.R <page.csv>\n")
+if (length(args) != 2)
+	stop("Usage: page2nodemap.R <page.csv> <nnodes>\n")
 
 data = read.csv(args[1])
-nnodes = 4
+nnodes = args[2]
 
 threads = grep("T\\d+", names(data))
 nthreads = length(threads)
