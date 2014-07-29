@@ -5,13 +5,14 @@
 #include <cmath>
 #include <cstring>
 #include <fstream>
+#include <unistd.h>
 
 #include "pin.H"
 
 const int MAXTHREADS = 64;
+int PAGESIZE = 0;
 
 KNOB<int> COMMSIZE(KNOB_MODE_WRITEONCE, "pintool", "cs", "6", "comm shift in bits");
-KNOB<int> PAGESIZE(KNOB_MODE_WRITEONCE, "pintool", "ps", "12", "page size in bits");
 KNOB<int> INTERVAL(KNOB_MODE_WRITEONCE, "pintool", "i", "0", "print interval (ms) (0=disable)");
 
 KNOB<bool> DOCOMM(KNOB_MODE_WRITEONCE, "pintool", "c", "0", "enable comm detection");
@@ -236,6 +237,8 @@ VOID Fini(INT32 code, VOID *v)
 int main(int argc, char *argv[])
 {
 	if (PIN_Init(argc,argv)) return 1;
+
+	PAGESIZE = log2(sysconf(_SC_PAGESIZE));
 
 	if (!DOCOMM && !DOPAGE) {
 		cerr << "Error: need to choose at least one of communication (-c) or page usage (-p) detection" << endl;
