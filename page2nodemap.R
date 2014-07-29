@@ -15,7 +15,7 @@ if (length(args) != 2)
 	stop("Usage: page2nodemap.R <page.csv> <nnodes>\n")
 
 data = read.csv(args[1])
-nnodes = args[2]
+nnodes = as.numeric(args[2])
 
 threads = grep("T\\d+", names(data))
 nthreads = length(threads)
