@@ -6,6 +6,46 @@
 
 # If the tool is built out of the kit, PIN_ROOT must be specified in the make invocation and point to the kit root.
 
+MYVER=$(shell /opt/pin/pin -version |grep Pin)
+
+ifeq ($(MYVER), Pin 2.10) # old pin versions use different makefile system
+
+TOOL_CXXFLAGS += -Wall -g -std=c++0x -Wno-error
+
+TOOL_ROOTS := numalize
+
+PIN_HOME = /opt/pin
+PIN_KIT=$(PIN_HOME)
+KIT=1
+
+include $(PIN_HOME)/source/tools/makefile.gnu.config
+CXXFLAGS ?= $(DBG) $(OPT) $(TOOL_CXXFLAGS)
+PIN=$(PIN_HOME)/pin
+
+CXX=g++-4.6
+
+TOOLS = $(TOOL_ROOTS:%=$(OBJDIR)%$(PINTOOL_SUFFIX))
+
+all: tools
+tools: $(OBJDIR) $(TOOLS)
+
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
+$(OBJDIR)%.o : %.cpp
+	$(CXX) -c $(CXXFLAGS) $(PIN_CXXFLAGS) ${OUTOPT}$@ $<
+
+$(TOOLS): %$(PINTOOL_SUFFIX) : %.o
+	${PIN_LD} $(PIN_LDFLAGS) $(LINK_DEBUG) ${LINK_OUT}$@ $< ${PIN_LPATHS} $(PIN_LIBS) $(DBG)
+
+
+clean:
+	rm -rf $(OBJDIR)
+
+
+else # new pin versions
+
 override PIN_ROOT = /opt/pin
 
 ifdef PIN_ROOT
@@ -14,137 +54,13 @@ else
 CONFIG_ROOT := ../Config
 endif
 include $(CONFIG_ROOT)/makefile.config
-##############################################################
-#
-# This file includes all the test targets as well as all the
-# non-default build rules and test recipes.
-#
-##############################################################
 
 TOOL_CXXFLAGS += -Wall -g -std=c++0x -Wno-error
 TOOL_LDFLAGS += -Wl,-rpath,/opt/pin/intel64/runtime
 
-##############################################################
-#
-# Test targets
-#
-##############################################################
 
-###### Place all generic definitions here ######
-
-# This defines tests which run tools of the same name.  This is simply for convenience to avoid
-# defining the test name twice (once in TOOL_ROOTS and again in TEST_ROOTS).
-# Tests defined here should not be defined in TOOL_ROOTS and TEST_ROOTS.
 TEST_TOOL_ROOTS := numalize
-
-# This defines the tests to be run that were not already defined in TEST_TOOL_ROOTS.
-TEST_ROOTS :=
-
-# This defines a list of tests that should run in the "short" sanity. Tests in this list must also
-# appear either in the TEST_TOOL_ROOTS or the TEST_ROOTS list.
-# If the entire directory should be tested in sanity, assign TEST_TOOL_ROOTS and TEST_ROOTS to the
-# SANITY_SUBSET variable in the tests section below (see example in makefile.rules.tmpl).
-SANITY_SUBSET :=
-
-# This defines the tools which will be run during the the tests, and were not already defined in
-# TEST_TOOL_ROOTS.
-TOOL_ROOTS :=
-
-# This defines the static analysis tools which will be run during the the tests. They should not
-# be defined in TEST_TOOL_ROOTS. If a test with the same name exists, it should be defined in
-# TEST_ROOTS.
-# Note: Static analysis tools are in fact executables linked with the Pin Static Analysis Library.
-# This library provides a subset of the Pin APIs which allows the tool to perform static analysis
-# of an application or dll. Pin itself is not used when this tool runs.
-SA_TOOL_ROOTS :=
-
-# This defines all the applications that will be run during the tests.
-APP_ROOTS :=
-
-# This defines any additional object files that need to be compiled.
-OBJECT_ROOTS :=
-
-# This defines any additional dlls (shared objects), other than the pintools, that need to be compiled.
-DLL_ROOTS :=
-
-# This defines any static libraries (archives), that need to be built.
-LIB_ROOTS :=
-
-###### Place probe mode tests here ######
-ifeq ($(PROBE),1)
-    TEST_TOOL_ROOTS +=
-endif
-
-###### Place OS-specific definitions here ######
-
-# Linux
-ifeq ($(TARGET_OS),linux)
-    TEST_TOOL_ROOTS +=
-    TEST_ROOTS +=
-    SA_TOOL_ROOTS +=
-    APP_ROOTS +=
-endif
-
-# Mac
-ifeq ($(TARGET_OS),mac)
-    TEST_TOOL_ROOTS += fork_jit_tool follow_child_tool strace
-    TEST_ROOTS += statica
-    SA_TOOL_ROOTS += statica
-    APP_ROOTS += fork_app follow_child_app1 follow_child_app2
-endif
-
-# Windows
-ifeq ($(TARGET_OS),windows)
-    TEST_TOOL_ROOTS += w_malloctrace buffer_windows emudiv
-    APP_ROOTS += divide_by_zero
-endif
-
-###### Handle exceptions here ######
-
-# TODO: These tests fail - fix and remove the following:
-# See mantis 2963
-ifeq ($(TARGET),mic)
-    TEST_TOOL_ROOTS := $(filter-out nonstatica emudiv, $(TEST_TOOL_ROOTS))
-    TEST_ROOTS := $(filter-out statica, $(TEST_ROOTS))
-    SA_TOOL_ROOTS := $(filter-out statica, $(SA_TOOL_ROOTS))
-endif
-
-# TODO: These tests fail - fix and remove the following:
-ifeq ($(TARGET_OS),mac)
-    TEST_TOOL_ROOTS := $(filter-out follow_child_tool fork_jit_tool inscount_tls invocation malloc_mt stack-debugger, \
-                                    $(TEST_TOOL_ROOTS))
-    TEST_ROOTS := $(filter-out statica, $(TEST_ROOTS))
-    SA_TOOL_ROOTS := $(filter-out statica, $(SA_TOOL_ROOTS))
-endif
-
-
-##############################################################
-#
-# Test recipes
-#
-##############################################################
-
-# This section contains recipes for tests other than the default.
-# See makefile.default.rules for the default test rules.
-# All tests in this section should adhere to the naming convention: <testname>.test
-
-
-##############################################################
-#
-# Build rules
-#
-##############################################################
-
-# This section contains the build rules for all binaries that have special build rules.
-# See makefile.default.rules for the default build rules.
-
-###### Special applications' build rules ######
-
 
 include $(TOOLS_ROOT)/Config/makefile.default.rules
 
-##############################################################
-#
-#                   DO NOT EDIT THIS FILE!
-#
-##############################################################
+endif
