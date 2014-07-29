@@ -2,11 +2,11 @@
 
 # mappings:
 # - rr_node: round-robin mapping of pages to nodes
-# - interleave: rr based on page address (equal to numactl -i all? uses last bits of page addr to determine node)
-# - locality: put page on node with highest locality
-# - membalance: rr, such that number of memory accesses to all nodes are equal
-# - locality+distribution: locality for pages with high exclusivity, rr for low excl.
-# - random: random assignment
+# - inter_node: rr based on page address (equal to numactl -i all; uses last bits of page addr to determine node)
+# - local_node: put page on node with highest number of memory accesses
+# - bal_node: rr, such that number of memory accesses to all nodes are equal
+# - mixed_node: locality for pages with high exclusivity, interleave for low excl.
+# - random_node: random assignment
 
 options("scipen"=1000)
 
@@ -86,25 +86,25 @@ cat("wrote .mixed\n")
 # sort pages by #accesses
 
 x = data[order(data$sum,decreasing = T),]
-x$bal_node = 0
 
-total = sum(x$sum)
+totaln = sum(x$sum) / nnodes
+sums = rep(0, nnodes)
 
 pb = txtProgressBar(min = 1, max = num_pages, style = 3)
+new = rep(0, num_pages)
 
 for (i in 1:num_pages) {
-	n = x[i,'local_node']
+	n = x$local_node[i]
 
-	if (sum(x$sum[x$bal_node==n])/total < 1/nnodes)
-		x[i,'bal_node'] = n
-	else {
-		j = 1
-		while (sum(x$sum[x$bal_node==j])/total > 1/nnodes)
-			j = (j %% nnodes) + 1
-		x[i,'bal_node'] = j
-	}
+	if (sums[n] >= totaln)
+		n = which.min(sums)
+
+	new[i] = n
+	sums[n] = sums[n] + x$sum[i]
+
 	setTxtProgressBar(pb, i)
 }
+x$bal_node = new
 
 cat("\nmemory balance (accesses), bal_node\n")
 for (i in 1:nnodes)
