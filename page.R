@@ -211,3 +211,16 @@ cat("\tinter_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$inter_nod
 cat("\trandom_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$random_node) * data$sum, na.rm=TRUE)/total))
 cat("\tmixed_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$mixed_node) * data$sum, na.rm=TRUE)/total))
 cat("\tbal_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$bal_node) * data$sum, na.rm=TRUE)/total))
+
+
+#### Write mappings to csv files
+
+cat("\n\n### Writing mappings to csv files...")
+write.table(data[, c("addr", "first_touch")], file=paste(args[1], ".first", sep=""), row.names=F, col.names=F)
+write.table(data[, c("addr", "local_node")], file=paste(args[1], ".local", sep=""), row.names=F, col.names=F)
+write.table(data[, c("addr", "rr_node")], file=paste(args[1], ".rr", sep=""), row.names=F, col.names=F)
+write.table(data[, c("addr", "inter_node")], file=paste(args[1], ".inter", sep=""), row.names=F, col.names=F)
+write.table(data[, c("addr", "random_node")], file=paste(args[1], ".random", sep=""), row.names=F, col.names=F)
+write.table(data[, c("addr", "mixed_node")], file=paste(args[1], ".mixed", sep=""), row.names=F, col.names=F)
+write.table(data[, c("addr", "bal_node")], file=paste(args[1], ".bal", sep=""), row.names=F, col.names=F)
+cat("  done.\n")
