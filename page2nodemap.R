@@ -94,7 +94,6 @@ pb = txtProgressBar(min = 1, max = num_pages, style = 3)
 
 for (i in 1:num_pages) {
 	n = x[i,'local_node']
-	a = x[i,'addr']
 
 	if (sum(x$sum[x$bal_node==n])/total < 1/nnodes)
 		x[i,'bal_node'] = n
