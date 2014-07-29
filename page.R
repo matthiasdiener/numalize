@@ -65,6 +65,21 @@ set.seed(1)
 data$random_node = floor(runif(npages, 1, nnodes+1))
 data$mixed_node = ifelse(data$excl > 95, data$local_node, data$rr_node)
 
+totaln = sum(data$sum) / nnodes
+sums = rep(0, nnodes)
+new = rep(0, npages)
+
+for (i in 1:npages) {
+	n = data$local_node[i]
+
+	if (sums[n] >= totaln)
+		n = which.min(sums)
+
+	new[i] = n
+	sums[n] = sums[n] + data$sum[i]
+}
+data$bal_node = new
+
 #### Balance
 
 cat("\nmemory balance (# pages):")
@@ -86,6 +101,9 @@ for (i in 1:nnodes)
 cat("\n\tmixed_node:\t")
 for (i in 1:nnodes)
 	cat(as.integer(table(data$mixed_node)[i]), "")
+cat("\n\tbal_node:\t")
+for (i in 1:nnodes)
+	cat(as.integer(table(data$bal_node)[i]), "")
 
 cat("\n\nmemory balance (% accesses):")
 cat("\n\tfirst_touch:\t")
@@ -142,6 +160,15 @@ for (i in 1:nnodes){
 	amin=min(amin, sum(data$sum[data$mixed_node==i], na.rm=T)/total)
 }
 cat("(", 100-(amax-amin), ")", sep="")
+cat("\n\tbal_node:\t")
+amax=0
+amin=100
+for (i in 1:nnodes){
+	cat(sprintf("%5.2f ", sum(data$sum[data$bal_node==i], na.rm=T)/total))
+	amax=max(amax, sum(data$sum[data$bal_node==i], na.rm=T)/total)
+	amin=min(amin, sum(data$sum[data$bal_node==i], na.rm=T)/total)
+}
+cat("(", 100-(amax-amin), ")", sep="")
 
 
 #### Exclusivity
@@ -173,7 +200,7 @@ cat("\trr_node:\t", sprintf("%6.2f\n", sum((data$rr_node == data$local_node))/np
 cat("\tinter_node:\t", sprintf("%6.2f\n", sum((data$inter_node == data$local_node))/npages*100))
 cat("\trandom_node:\t", sprintf("%6.2f\n", sum((data$random_node == data$local_node))/npages*100))
 cat("\tmixed_node:\t", sprintf("%6.2f\n", sum((data$mixed_node == data$local_node))/npages*100))
-
+cat("\tbal_node:\t", sprintf("%6.2f\n", sum((data$bal_node == data$local_node))/npages*100))
 
 cat("\naccuracy (% accesses):\n")
 
@@ -183,3 +210,4 @@ cat("\trr_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$rr_node) * d
 cat("\tinter_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$inter_node) * data$sum, na.rm=TRUE)/total))
 cat("\trandom_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$random_node) * data$sum, na.rm=TRUE)/total))
 cat("\tmixed_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$mixed_node) * data$sum, na.rm=TRUE)/total))
+cat("\tbal_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$bal_node) * data$sum, na.rm=TRUE)/total))
