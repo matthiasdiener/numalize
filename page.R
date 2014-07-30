@@ -1,6 +1,13 @@
 #!/usr/bin/env Rscript
 
-# missing bal_node
+# mappings:
+# - rr_node: round-robin mapping of pages to nodes
+# - inter_node: rr based on page address (equal to numactl -i all; uses last bits of page addr to determine node)
+# - local_node: put page on node with highest number of memory accesses
+# - remote_node: put page on the node with the lowest number of accesses (opposite of locality)
+# - bal_node: rr, such that number of memory accesses to all nodes are equal
+# - mixed_node: locality for pages with high exclusivity, interleave for low excl.
+# - random_node: random assignment
 
 options(digits=4)
 library(data.table)
@@ -58,11 +65,23 @@ total = sum(data$sum) / 100
 #### Page mappings
 
 data$first_touch = ttn[data$firstacc+1]
+
 data$local_node = max.col(data[nodes], "first")
+
+mymin = function(x) {
+	ma = which.max(x)
+	mi = tail(which(x==min(x)), 1)
+	mi[which.max(abs(mi-ma))]
+}
+data$remote_node = apply(data[nodes], 1, mymin)
+
 data$rr_node = rep_len(c(1:nnodes), npages)
+
 data$inter_node = (data$addr %% nnodes) + 1
+
 set.seed(1)
 data$random_node = floor(runif(npages, 1, nnodes+1))
+
 data$mixed_node = ifelse(data$excl > 95, data$local_node, data$rr_node)
 
 totaln = sum(data$sum) / nnodes
@@ -89,6 +108,9 @@ for (i in 1:nnodes)
 cat("\n\tlocal_node:\t")
 for (i in 1:nnodes)
 	cat(as.integer(table(data$local_node)[i]), "")
+cat("\n\tremote_node:\t")
+for (i in 1:nnodes)
+	cat(as.integer(table(data$remote_node)[i]), "")
 cat("\n\trr_node:\t")
 for (i in 1:nnodes)
 	cat(as.integer(table(data$rr_node)[i]), "")
@@ -122,6 +144,15 @@ for (i in 1:nnodes){
 	cat(sprintf("%5.2f ", sum(data$sum[data$local_node==i], na.rm=T)/total))
 	amax=max(amax, sum(data$sum[data$local_node==i], na.rm=T)/total)
 	amin=min(amin, sum(data$sum[data$local_node==i], na.rm=T)/total)
+}
+cat("(", 100-(amax-amin), ")", sep="")
+cat("\n\tremote_node:\t")
+amax=0
+amin=100
+for (i in 1:nnodes){
+	cat(sprintf("%5.2f ", sum(data$sum[data$remote_node==i], na.rm=T)/total))
+	amax=max(amax, sum(data$sum[data$remote_node==i], na.rm=T)/total)
+	amin=min(amin, sum(data$sum[data$remote_node==i], na.rm=T)/total)
 }
 cat("(", 100-(amax-amin), ")", sep="")
 cat("\n\trr_node:\t")
@@ -196,6 +227,7 @@ cat("\naccuracy (% pages):\n")
 
 cat("\tfirst_touch:\t", sprintf("%6.2f\n", sum((data$local_node == data$first_touch))/npages*100))
 cat("\tlocal_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$local_node))/npages*100))
+cat("\tremote_node:\t", sprintf("%6.2f\n", sum((data$remote_node == data$local_node))/npages*100))
 cat("\trr_node:\t", sprintf("%6.2f\n", sum((data$rr_node == data$local_node))/npages*100))
 cat("\tinter_node:\t", sprintf("%6.2f\n", sum((data$inter_node == data$local_node))/npages*100))
 cat("\trandom_node:\t", sprintf("%6.2f\n", sum((data$random_node == data$local_node))/npages*100))
@@ -206,6 +238,7 @@ cat("\naccuracy (% accesses):\n")
 
 cat("\tfirst_touch:\t", sprintf("%6.2f\n", sum((data$local_node == data$first_touch) * data$sum, na.rm=TRUE)/total))
 cat("\tlocal_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$local_node) * data$sum, na.rm=TRUE)/total))
+cat("\tremote_node:\t", sprintf("%6.2f\n", sum((data$remote_node == data$local_node) * data$sum, na.rm=TRUE)/total))
 cat("\trr_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$rr_node) * data$sum, na.rm=TRUE)/total))
 cat("\tinter_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$inter_node) * data$sum, na.rm=TRUE)/total))
 cat("\trandom_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$random_node) * data$sum, na.rm=TRUE)/total))
@@ -218,6 +251,7 @@ cat("\tbal_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$bal_node) *
 cat("\n\n### Writing mappings to csv files...")
 write.table(data[, c("addr", "first_touch")], file=paste(args[1], ".first", sep=""), row.names=F, col.names=F)
 write.table(data[, c("addr", "local_node")], file=paste(args[1], ".local", sep=""), row.names=F, col.names=F)
+write.table(data[, c("addr", "remote_node")], file=paste(args[1], ".remote", sep=""), row.names=F, col.names=F)
 write.table(data[, c("addr", "rr_node")], file=paste(args[1], ".rr", sep=""), row.names=F, col.names=F)
 write.table(data[, c("addr", "inter_node")], file=paste(args[1], ".inter", sep=""), row.names=F, col.names=F)
 write.table(data[, c("addr", "random_node")], file=paste(args[1], ".random", sep=""), row.names=F, col.names=F)
