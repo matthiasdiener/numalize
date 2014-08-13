@@ -11,11 +11,23 @@ if (length(args) < 1)
 
 for (i in 1:length(args)) {
 	filename = args[i]
-	outfilename = gsub(".csv", ".pdf", filename)
-	if (filename == outfilename)
-		outfilename = paste(filename, ".pdf", sep="")
 
-	csv = as.data.frame(read.csv(filename, header=FALSE))
+	if (grepl(".csv", filename)) {
+		outfilename = gsub(".csv", ".pdf", filename)
+		if (filename == outfilename)
+			outfilename = paste(filename, ".pdf", sep="")
+
+		csv = as.data.frame(read.csv(filename, header=FALSE))
+	} else if (grepl(".dat", filename)) {
+		outfilename = gsub(".dat", ".pdf", filename)
+		if (filename == outfilename)
+			outfilename = paste(filename, ".pdf", sep="")
+
+		csv = data.matrix(read.table(filename, header=FALSE))
+		csv = apply(csv, 2, rev) # reverse csv
+		csv = data.frame(csv)
+	}
+
 	nt = ncol(csv)
 
 	rownames(csv) = rev(as.integer(rownames(csv)) - 1)
