@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-library(lattice)
+library(lattice) # for levelplot
 
 cleardiag = 1
 
