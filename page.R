@@ -62,6 +62,7 @@ data$excl = data$max / data$sum * 100
 npages = nrow(data)
 total = sum(data$sum) / 100
 
+
 #### Page mappings
 
 data$first_touch = ttn[data$firstacc+1]
@@ -99,7 +100,8 @@ for (i in 1:npages) {
 }
 data$bal_node = new
 
-#### Balance
+
+#### Memory Balance
 
 cat("\nmemory balance (# pages):")
 cat("\n\tfirst_touch:\t")
@@ -221,6 +223,7 @@ for (i in 1:nrow(excl))
 
 cat("\napplication exclusivity:\n\t", sum(data$max, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%\n")
 
+
 #### Accuracy
 
 cat("\naccuracy (% pages):\n")
@@ -233,6 +236,7 @@ cat("\tinter_node:\t", sprintf("%6.2f\n", sum((data$inter_node == data$local_nod
 cat("\trandom_node:\t", sprintf("%6.2f\n", sum((data$random_node == data$local_node))/npages*100))
 cat("\tmixed_node:\t", sprintf("%6.2f\n", sum((data$mixed_node == data$local_node))/npages*100))
 cat("\tbal_node:\t", sprintf("%6.2f\n", sum((data$bal_node == data$local_node))/npages*100))
+
 
 cat("\naccuracy (% accesses):\n")
 
@@ -249,6 +253,7 @@ cat("\tbal_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$bal_node) *
 #### Write mappings to csv files
 
 cat("\n\n### Writing mappings to csv files...")
+
 write.table(data[, c("addr", "first_touch")], file=paste(args[1], ".first", sep=""), row.names=F, col.names=F)
 write.table(data[, c("addr", "local_node")], file=paste(args[1], ".local", sep=""), row.names=F, col.names=F)
 write.table(data[, c("addr", "remote_node")], file=paste(args[1], ".remote", sep=""), row.names=F, col.names=F)
@@ -257,4 +262,5 @@ write.table(data[, c("addr", "inter_node")], file=paste(args[1], ".inter", sep="
 write.table(data[, c("addr", "random_node")], file=paste(args[1], ".random", sep=""), row.names=F, col.names=F)
 write.table(data[, c("addr", "mixed_node")], file=paste(args[1], ".mixed", sep=""), row.names=F, col.names=F)
 write.table(data[, c("addr", "bal_node")], file=paste(args[1], ".bal", sep=""), row.names=F, col.names=F)
+
 cat("  done.\n")
