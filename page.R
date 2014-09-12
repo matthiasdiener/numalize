@@ -9,7 +9,7 @@
 # - mixed_node: locality for pages with high exclusivity, interleave for low excl.
 # - random_node: random assignment
 
-options(digits=4)
+options(digits=4, scipen=1000)
 library(data.table)
 
 args = commandArgs(trailingOnly=T)
@@ -36,7 +36,7 @@ ttn=c()
 for (i in 1:length(n)) ttn[n[[i]]-3] = i
 
 cat("### Input data:\n\n")
-cat("#nodes:", nnodes, "  #threads:", nthreads, "  #threads per node:", tpn, "\n")
+cat("#nodes:", nnodes, "  #threads:", nthreads, "  #threads per node:", tpn, "\n\n")
 cat("thread to node assignment:\n")
 i = 0
 for (x in n) {
