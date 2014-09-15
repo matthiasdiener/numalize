@@ -76,7 +76,7 @@ mymin = function(x) {
 }
 data$remote_node = apply(data[nodes], 1, mymin)
 
-data$rr_node = rep_len(c(1:nnodes), npages)
+data$rr_node = rep(c(1:nnodes), length.out=npages)
 
 data$inter_node = (data$addr %% nnodes) + 1
 
