@@ -2,7 +2,9 @@
 
 library(lattice) # for levelplot
 
-cleardiag = 1
+cleardiag = 1 # remove diagnoal?
+scale = 4 # font size
+every = 10 # every x thread IDs
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -41,7 +43,7 @@ for (i in 1:length(args)) {
 			mat[i,i] = 0
 
 	pdf(outfilename, family="NimbusSan")
-	print(levelplot(mat, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab="", ylab="", scales=list(x=list(cex=1.5,at=seq(1,nt,5)), y=list(cex=1.5,at=seq(1,nt,5)))))
+	print(levelplot(mat, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab="", ylab="", scales=list(x=list(cex=scale,at=seq(1,nt,every)), y=list(cex=scale,at=seq(1,nt,every)))))
 	garbage <- dev.off()
 
 	embedFonts(outfilename)
