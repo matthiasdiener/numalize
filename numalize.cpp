@@ -14,7 +14,7 @@
 #include "pin.H"
 
 const int MAXTHREADS = 64;
-int PAGESIZE = 0;
+int PAGESIZE;
 
 KNOB<int> COMMSIZE(KNOB_MODE_WRITEONCE, "pintool", "cs", "6", "comm shift in bits");
 KNOB<int> INTERVAL(KNOB_MODE_WRITEONCE, "pintool", "i", "0", "print interval (ms) (0=disable)");
@@ -25,50 +25,27 @@ KNOB<bool> DOPAGE(KNOB_MODE_WRITEONCE, "pintool", "p", "0", "enable page usage d
 
 int num_threads = 0;
 
-UINT64 matrix[MAXTHREADS][MAXTHREADS];
+UINT64 comm_matrix[MAXTHREADS][MAXTHREADS]; // comm matrix
 
-unordered_map<UINT64, array<UINT64, MAXTHREADS+1>> pagemap;
+unordered_map<UINT64, array<UINT64, MAXTHREADS+1>> pagemap; // page address -> # accesses per thread
 
-unordered_map<UINT64, array<UINT32,2>> commmap;
+unordered_map<UINT64, array<UINT32,2>> commmap; // cache line -> list of tids that previously accesses
 
-map<UINT32, UINT32> pidmap;
+map<UINT32, UINT32> pidmap; // pid -> tid
 
-array<UINT64, MAXTHREADS> stackbase; // tid -> stack
-array<UINT64, MAXTHREADS> stackfixup; // tid -> fixup
-void print_matrix();
-void print_numa();
+array<UINT64, MAXTHREADS> stackbase; // tid -> stack base address from file (unpinned application)
+map<UINT32, UINT64> stackmap; // stack base address from pinned application
+int stacklimit; // stack limit (ulimit -s)
 
-
-map<UINT32, UINT64> stackmap;
-int stacklimit;
 string img_name;
-VOID mythread(VOID * arg)
-{
-	while(!PIN_IsProcessExiting()) {
-		if (INTERVAL == 0) {
-			PIN_Sleep(100);
-			continue;
-		} else {
-			PIN_Sleep(INTERVAL);
-		}
 
-		if (DOCOMM) {
-			print_matrix();
-			memset(matrix, 0, sizeof(matrix));
-		}
-		if (DOPAGE) {
-			print_numa();
-			for(auto it : pagemap)
-				fill(begin(it.second), end(it.second), 0);
-		}
-	}
-}
 
 static inline
 VOID inc_comm(int a, int b) {
 	if (a!=b-1)
-		matrix[a][b-1]++;
+		comm_matrix[a][b-1]++;
 }
+
 
 VOID do_comm(ADDRINT addr, THREADID tid)
 {
@@ -153,13 +130,15 @@ VOID trace_memory_page(INS ins, VOID *v)
 }
 
 
-VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
+VOID ThreadStart(THREADID tid, CONTEXT *ctxt, INT32 flags, VOID *v)
 {
 	__sync_add_and_fetch(&num_threads, 1);
+
 	if (num_threads>=MAXTHREADS)
 		cerr << "ERROR: num_threads (" << num_threads << ") higher than MAXTHREADS (" << MAXTHREADS << ")." << endl;
+
 	int pid = PIN_GetTid();
-	pidmap[pid] = threadid ? threadid - 1 : threadid;
+	pidmap[pid] = tid ? tid - 1 : tid;
 	stackmap[pid] = (PIN_GetContextReg(ctxt, REG_STACK_PTR) >> PAGESIZE);
 }
 
@@ -170,7 +149,7 @@ VOID print_matrix()
 	ofstream f;
 	char fname[255];
 
-	sprintf(fname, "%06ld.comm.csv", n++);
+	sprintf(fname, "%s.%06ld.comm.csv", img_name.c_str(), n++);
 
 	int real_tid[MAXTHREADS+1];
 	int i = 0, a, b;
@@ -186,7 +165,7 @@ VOID print_matrix()
 		a = real_tid[i];
 		for (int j = 0; j<num_threads; j++) {
 			b = real_tid[j];
-			f << matrix[a][b] + matrix[b][a];
+			f << comm_matrix[a][b] + comm_matrix[b][a];
 			if (j != num_threads-1)
 				f << ",";
 		}
@@ -226,7 +205,7 @@ UINT64 fixstack(UINT64 pageaddr, int real_tid[])
 			int fixup = stackbase[tid] - stackmap[it.first];
 
 			pageaddr += fixup;
-			cout << "fixup " << tid << " " << fixup << ": " << it.second << "->" << pageaddr << endl;
+			cout << "fixup " << tid << " " << fixup << ": " << pageaddr-fixup << "->" << pageaddr << endl;
 		}
 	}
 
@@ -243,7 +222,7 @@ void print_numa()
 	ofstream f;
 	char fname[255];
 
-	sprintf(fname, "%06ld.page.csv", n++);
+	sprintf(fname, "%s.%06ld.page.csv", img_name.c_str(), n++);
 
 	cout << fname << endl;
 
@@ -273,6 +252,28 @@ void print_numa()
 
 	f.close();
 }
+
+
+VOID mythread(VOID * arg)
+{
+	while(!PIN_IsProcessExiting()) {
+		PIN_Sleep(INTERVAL ? INTERVAL : 100);
+
+		if (INTERVAL == 0)
+			continue;
+
+		if (DOCOMM) {
+			print_matrix();
+			memset(comm_matrix, 0, sizeof(comm_matrix));
+		}
+		if (DOPAGE) {
+			print_numa();
+			for(auto it : pagemap)
+				fill(begin(it.second), end(it.second), 0);
+		}
+	}
+}
+
 
 VOID binName(IMG img, VOID *v)
 {
