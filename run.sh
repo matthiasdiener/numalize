@@ -20,9 +20,9 @@ cat > stack.gdb << EOF
 	continue
 EOF
 
-n=-1
+n=0
 
-gdb --batch --command=stack.gdb --args $PROGARGS | grep = | tac | cut -f 3 -d ' ' | while read line; do n=$((++n)) &&  echo $line|sed -e s,^,$n\ , ; done > $OUTFILE
+gdb --batch --command=stack.gdb --args $PROGARGS | grep '^$.*=' | tac | cut -f 3 -d ' ' | while read line; do  echo $line|sed -e s,^,$n\ , ; n=$((++n)) ; done > $OUTFILE
 
 echo real stack
 cat $OUTFILE
