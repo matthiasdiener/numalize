@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <unordered_map>
 #include <map>
 #include <array>
@@ -6,6 +7,9 @@
 #include <cstring>
 #include <fstream>
 #include <unistd.h>
+
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include "pin.H"
 
@@ -29,10 +33,15 @@ unordered_map<UINT64, array<UINT32,2>> commmap;
 
 map<UINT32, UINT32> pidmap;
 
+array<UINT64, MAXTHREADS> stackbase; // tid -> stack
+array<UINT64, MAXTHREADS> stackfixup; // tid -> fixup
 void print_matrix();
 void print_numa();
 
 
+map<UINT32, UINT64> stackmap;
+int stacklimit;
+string img_name;
 VOID mythread(VOID * arg)
 {
 	while(!PIN_IsProcessExiting()) {
@@ -147,9 +156,13 @@ VOID trace_memory_page(INS ins, VOID *v)
 VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
 {
 	__sync_add_and_fetch(&num_threads, 1);
+	if (num_threads>=MAXTHREADS)
+		cerr << "ERROR: num_threads (" << num_threads << ") higher than MAXTHREADS (" << MAXTHREADS << ")." << endl;
 	int pid = PIN_GetTid();
 	pidmap[pid] = threadid ? threadid - 1 : threadid;
+	stackmap[pid] = (PIN_GetContextReg(ctxt, REG_STACK_PTR) >> PAGESIZE);
 }
+
 
 VOID print_matrix()
 {
@@ -185,6 +198,42 @@ VOID print_matrix()
 }
 
 
+VOID getRealStackBase()
+{
+	ifstream ifs;
+	ifs.open(img_name + ".stackmap");
+
+	string line;
+	int tid;
+	UINT64 addr;
+
+	while (getline(ifs, line)) {
+		stringstream lineStream(line);
+		lineStream >> tid >> addr;
+		stackbase[tid] = addr;
+	}
+
+	ifs.close();
+}
+
+
+UINT64 fixstack(UINT64 pageaddr, int real_tid[])
+{
+	for (auto it : stackmap) {
+		if ((pageaddr - it.second) <= stacklimit || (it.second - pageaddr) <= stacklimit ) {
+			int tid = real_tid[pidmap[it.first]];
+
+			int fixup = stackbase[tid] - stackmap[it.first];
+
+			pageaddr += fixup;
+			cout << "fixup " << tid << " " << fixup << ": " << it.second << "->" << pageaddr << endl;
+		}
+	}
+
+	return pageaddr;
+}
+
+
 void print_numa()
 {
 	int real_tid[MAXTHREADS+1];
@@ -200,17 +249,21 @@ void print_numa()
 
 	f.open(fname);
 
-	for (auto it : pidmap)
+	for (auto it : pidmap){
 		real_tid[it.second] = i++;
+		cout << it.second << "->" << i-1 << " Stack " << stackmap[it.first] << endl;
+ 	}
 
-	f << "nr, addr, firstacc";
+	f << "nr,addr,firstacc";
 	for (int i = 0; i<num_threads; i++)
 		f << ",T" << i;
 	f << "\n";
 
+	getRealStackBase();
 
 	for(auto it : pagemap) {
-		f << "0," << it.first << "," << real_tid[it.second[MAXTHREADS]-1];
+		UINT64 pageaddr = fixstack(it.first, real_tid);
+		f << "0," << pageaddr << "," << real_tid[it.second[MAXTHREADS]-1];
 
 		for (int i=0; i<num_threads; i++)
 			f << "," << it.second[real_tid[i]];
@@ -221,6 +274,11 @@ void print_numa()
 	f.close();
 }
 
+VOID binName(IMG img, VOID *v)
+{
+	if (IMG_IsMainExecutable(img))
+		img_name = basename(IMG_Name(img).c_str());
+}
 
 
 VOID Fini(INT32 code, VOID *v)
@@ -246,6 +304,10 @@ int main(int argc, char *argv[])
     	return 1;
 	}
 
+	struct rlimit limit;
+	getrlimit (RLIMIT_STACK, &limit);
+	stacklimit = limit.rlim_cur / 1024 / 4;
+
 	THREADID t = PIN_SpawnInternalThread(mythread, NULL, 0, NULL);
 	if (t!=1)
 		cerr << "ERROR " << t << endl;
@@ -257,6 +319,7 @@ int main(int argc, char *argv[])
 		INS_AddInstrumentFunction(trace_memory_page, 0);
 	}
 
+	IMG_AddInstrumentFunction(binName, 0);
 	if (DOCOMM) {
 		commmap.reserve(4*100000000);
 		INS_AddInstrumentFunction(trace_memory_comm, 0);
