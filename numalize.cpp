@@ -146,7 +146,7 @@ VOID ThreadStart(THREADID tid, CONTEXT *ctxt, INT32 flags, VOID *v)
 {
 	__sync_add_and_fetch(&num_threads, 1);
 
-	if (num_threads>=MAXTHREADS)
+	if (num_threads>=MAXTHREADS+1)
 		cerr << "ERROR: num_threads (" << num_threads << ") higher than MAXTHREADS (" << MAXTHREADS << ")." << endl;
 
 	int pid = PIN_GetTid();
