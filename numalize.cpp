@@ -210,17 +210,27 @@ VOID getRealStackBase()
 
 UINT64 fixstack(UINT64 pageaddr, int real_tid[])
 {
+	if (pageaddr < 10 * 1000 * 1000)
+		return pageaddr;
+
+	// cout << "pg " << pageaddr << endl;
+
 	for (auto it : stackmap) {
-		if (abs(pageaddr - it.second) <= stacklimit) {
+		long diff = (it.second + 1 - pageaddr);
+		// cout << "  " << it.second << " " << abs(diff) << endl;
+		if (abs(diff) <= stacklimit) {
 			int tid = real_tid[pidmap[it.first]];
 
-			int fixup = stackbase[tid] - stackmap[it.first];
+			int fixup = stackbase[tid] - stackmap[it.first]; //should be stackmap[tid]???
 
 			pageaddr += fixup;
-			cout << "fixup " << tid << " " << fixup << ": " << pageaddr-fixup << "->" << pageaddr << endl;
+			// cout << "    fixup T" << tid << " " << fixup << ": " << pageaddr-fixup << "->" << pageaddr << endl;
+
+			return pageaddr;
 		}
 	}
 
+	cout << "ERROR " << pageaddr << endl;
 	return pageaddr;
 }
 
