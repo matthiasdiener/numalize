@@ -97,11 +97,14 @@ VOID do_comm(ADDRINT addr, THREADID tid)
 static inline
 UINT64 get_tsc()
 {
-     unsigned a, d;
-     asm("cpuid");
-     asm volatile("rdtsc" : "=a" (a), "=d" (d));
-
-     return (((UINT64)a) | (((UINT64)d) << 32));
+  unsigned int lo, hi;
+  asm volatile (
+     "cpuid \n"
+     "rdtsc"
+   : "=a"(lo), "=d"(hi) /* outputs */
+   : "a"(0)             /* inputs */
+   : "%ebx", "%ecx");     /* clobbers*/
+  return ((UINT64)lo) | (((UINT64)hi) << 32);
 }
 
 VOID do_numa(ADDRINT addr, THREADID tid)
