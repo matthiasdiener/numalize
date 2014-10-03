@@ -7,7 +7,8 @@ DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 (cd $DIR; make -q || make)
 
 PROGARGS=$(echo ${@} | sed s,.*--\ ,,)
-OUTFILE=$(basename $PROGARGS | sed s,\\s.*,,).stackmap
+PROG=$(basename $PROGARGS | sed s,\\s.*,,)
+OUTFILE=$PROG.stackmap
 
 PAGESIZE=$(getconf PAGESIZE)
 
@@ -20,16 +21,21 @@ cat > stack.gdb << EOF
 	continue
 EOF
 
+echo "Gathering stack information via gdb"
+
 n=0
 
 gdb --batch --command=stack.gdb --args $PROGARGS | grep '^$.*=' | tac | cut -f 3 -d ' ' | while read line; do  echo $line/$PAGESIZE | bc | sed -e s,^,$n\ , ; n=$((n+1)) ; done > $OUTFILE
 
-echo real stack
-cat $OUTFILE
-echo
 
 rm -f stack.gdb
 
-pin -t $DIR/obj-*/*.so ${@}
+echo "Running pin"
+
+time -p pin -xyzzy -enable_vsm 0 -t $DIR/obj-*/*.so ${@}
 
 rm -f $OUTFILE
+
+for f in $PROG.*.page.csv; do
+	sort -t, -g -k 2 -o $f $f
+done
