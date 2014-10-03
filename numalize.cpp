@@ -27,15 +27,16 @@ int num_threads = 0;
 
 UINT64 comm_matrix[MAXTHREADS][MAXTHREADS]; // comm matrix
 
-unordered_map<UINT64, array<UINT64, MAXTHREADS+1>> pagemap; // page address -> # accesses per thread
-
 unordered_map<UINT64, array<UINT32,2>> commmap; // cache line -> list of tids that previously accesses
+
+array<unordered_map<UINT64, UINT64>, MAXTHREADS+1> pagemap;
+array<unordered_map<UINT64, UINT64>, MAXTHREADS+1> ftmap;
 
 map<UINT32, UINT32> pidmap; // pid -> tid
 
 array<UINT64, MAXTHREADS> stackbase; // tid -> stack base address from file (unpinned application)
 map<UINT32, UINT64> stackmap; // stack base address from pinned application
-int stacklimit; // stack limit (ulimit -s)
+unsigned stacklimit; // stack limit (ulimit -s)
 
 string img_name;
 
@@ -93,15 +94,23 @@ VOID do_comm(ADDRINT addr, THREADID tid)
 	}
 }
 
+static inline
+UINT64 get_tsc()
+{
+     unsigned a, d;
+     asm("cpuid");
+     asm volatile("rdtsc" : "=a" (a), "=d" (d));
+
+     return (((UINT64)a) | (((UINT64)d) << 32));
+}
+
 VOID do_numa(ADDRINT addr, THREADID tid)
 {
 	UINT64 page = addr >> PAGESIZE;
 	tid = tid>=2 ? tid-1 : tid;
 
-	if (pagemap[page][MAXTHREADS] == 0)
-		__sync_bool_compare_and_swap(&pagemap[page][MAXTHREADS], 0, tid+1);
-
-	pagemap[page][tid]++;
+	if (pagemap[tid][page]++ == 0)
+		ftmap[tid][page] = get_tsc();
 }
 
 
@@ -199,7 +208,7 @@ VOID getRealStackBase()
 UINT64 fixstack(UINT64 pageaddr, int real_tid[])
 {
 	for (auto it : stackmap) {
-		if ((pageaddr - it.second) <= stacklimit || (it.second - pageaddr) <= stacklimit ) {
+		if (abs(pageaddr - it.second) <= stacklimit) {
 			int tid = real_tid[pidmap[it.first]];
 
 			int fixup = stackbase[tid] - stackmap[it.first];
@@ -216,6 +225,10 @@ UINT64 fixstack(UINT64 pageaddr, int real_tid[])
 void print_numa()
 {
 	int real_tid[MAXTHREADS+1];
+
+	unordered_map<UINT64, array<UINT64, MAXTHREADS+1>> finalmap;
+	unordered_map<UINT64, pair<UINT64, UINT32>> finalft;
+
 	int i = 0;
 
 	static long n = 0;
@@ -240,9 +253,18 @@ void print_numa()
 
 	getRealStackBase();
 
-	for(auto it : pagemap) {
+	for (int tid = 0; tid<num_threads; tid++) {
+		for (auto it : pagemap[tid]) {
+			finalmap[it.first][tid] = pagemap[tid][it.first];
+			if (finalft[it.first].first == 0 || finalft[it.first].first > ftmap[tid][it.first])
+				finalft[it.first] = make_pair(ftmap[tid][it.first], real_tid[tid]);
+		}
+	}
+
+
+	for(auto it : finalmap) {
 		UINT64 pageaddr = fixstack(it.first, real_tid);
-		f << "0," << pageaddr << "," << real_tid[it.second[MAXTHREADS]-1];
+		f << "0," << pageaddr << "," << finalft[it.first].second;
 
 		for (int i=0; i<num_threads; i++)
 			f << "," << it.second[real_tid[i]];
@@ -268,8 +290,8 @@ VOID mythread(VOID * arg)
 		}
 		if (DOPAGE) {
 			print_numa();
-			for(auto it : pagemap)
-				fill(begin(it.second), end(it.second), 0);
+			// for(auto it : pagemap)
+			// 	fill(begin(it.second), end(it.second), 0);
 		}
 	}
 }
@@ -280,6 +302,7 @@ VOID binName(IMG img, VOID *v)
 	if (IMG_IsMainExecutable(img))
 		img_name = basename(IMG_Name(img).c_str());
 }
+
 
 
 VOID Fini(INT32 code, VOID *v)
@@ -315,17 +338,13 @@ int main(int argc, char *argv[])
 
 	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 
-	if (DOPAGE) {
-		pagemap.reserve(3*4*1000000); // ~16GByte of mem usage, enough for NAS input C
+	if (DOPAGE)
 		INS_AddInstrumentFunction(trace_memory_page, 0);
-	}
+
+	if (DOCOMM)
+		INS_AddInstrumentFunction(trace_memory_comm, 0);
 
 	IMG_AddInstrumentFunction(binName, 0);
-	if (DOCOMM) {
-		commmap.reserve(4*100000000);
-		INS_AddInstrumentFunction(trace_memory_comm, 0);
-	}
-
 	PIN_AddThreadStartFunction(ThreadStart, 0);
 	PIN_AddFiniFunction(Fini, 0);
 
