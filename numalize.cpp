@@ -97,14 +97,20 @@ VOID do_comm(ADDRINT addr, THREADID tid)
 static inline
 UINT64 get_tsc()
 {
+#if defined(__i386) || defined(__x86_64__)
   unsigned int lo, hi;
-  asm volatile (
+  __asm__ __volatile__ (
      "cpuid \n"
      "rdtsc"
    : "=a"(lo), "=d"(hi) /* outputs */
    : "a"(0)             /* inputs */
    : "%ebx", "%ecx");     /* clobbers*/
   return ((UINT64)lo) | (((UINT64)hi) << 32);
+#elif defined(__ia64)
+  UINT64 r;
+  __asm__ __volatile__ ("mov %0=ar.itc" : "=r" (r) :: "memory");
+  return r;
+#endif
 }
 
 VOID do_numa(ADDRINT addr, THREADID tid)
