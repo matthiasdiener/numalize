@@ -151,7 +151,7 @@ VOID ThreadStart(THREADID tid, CONTEXT *ctxt, INT32 flags, VOID *v)
 
 	int pid = PIN_GetTid();
 	pidmap[pid] = tid ? tid - 1 : tid;
-	stackmap[pid] = (PIN_GetContextReg(ctxt, REG_STACK_PTR) >> PAGESIZE);
+	stackmap[pid] = PIN_GetContextReg(ctxt, REG_STACK_PTR) >> PAGESIZE;
 }
 
 
@@ -208,7 +208,7 @@ VOID getRealStackBase()
 }
 
 
-UINT64 fixstack(UINT64 pageaddr, int real_tid[])
+UINT64 fixstack(UINT64 pageaddr, int real_tid[], THREADID first)
 {
 	if (pageaddr < 10 * 1000 * 1000)
 		return pageaddr;
@@ -230,7 +230,7 @@ UINT64 fixstack(UINT64 pageaddr, int real_tid[])
 		}
 	}
 
-	cout << "ERROR " << pageaddr << endl;
+	cout << "ERROR " << pageaddr << " T: " << first << endl;
 	return pageaddr;
 }
 
@@ -276,7 +276,7 @@ void print_numa()
 
 
 	for(auto it : finalmap) {
-		UINT64 pageaddr = fixstack(it.first, real_tid);
+		UINT64 pageaddr = fixstack(it.first, real_tid, finalft[it.first].second);
 		f << "0," << pageaddr << "," << finalft[it.first].second;
 
 		for (int i=0; i<num_threads; i++)
