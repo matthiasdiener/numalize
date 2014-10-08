@@ -10,7 +10,7 @@ addn = function(frame) {
 	threads = grep("T\\d+", names(frame))
 	nthreads = length(threads)
 	tpn = nthreads / nnodes
-	nodes = c((nthreads+4):(nthreads+4+nnodes-1))
+	nodes = c((ncol(frame)+1):(ncol(frame)+nnodes))
 	n = split(threads, ceiling(seq_along(threads)/tpn))
 
 	cat("\t#threads:", nthreads)

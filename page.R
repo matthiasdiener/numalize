@@ -33,7 +33,7 @@ nodes=c((ncol(data)+1):(ncol(data)+nnodes))
 n = split(threads, ceiling(seq_along(threads)/tpn))
 
 ttn=c()
-for (i in 1:length(n)) ttn[n[[i]]-3] = i
+for (i in 1:length(n)) ttn[n[[i]]-2] = i
 
 cat("### Input data:\n\n")
 cat("#nodes:", nnodes, "  #threads:", nthreads, "  #threads per node:", tpn, "\n\n")
@@ -50,7 +50,6 @@ for (i in 1:length(nodes))
 	data[nodes[i]] = rowSums(data[unlist(n[i])])
 
 data = data[-threads]
-data = data[-1]
 
 nodes = c(3:ncol(data))
 

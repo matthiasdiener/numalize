@@ -265,7 +265,7 @@ void print_numa()
 		cout << it.second << "->" << i-1 << " Stack " << stackmap[it.first] << endl;
  	}
 
-	f << "nr,addr,firstacc";
+	f << "addr,firstacc";
 	for (int i = 0; i<num_threads; i++)
 		f << ",T" << i;
 	f << "\n";
@@ -283,7 +283,7 @@ void print_numa()
 
 	for(auto it : finalmap) {
 		UINT64 pageaddr = fixstack(it.first, real_tid, finalft[it.first].second);
-		f << "0," << pageaddr << "," << finalft[it.first].second;
+		f << pageaddr << "," << finalft[it.first].second;
 
 		for (int i=0; i<num_threads; i++)
 			f << "," << it.second[real_tid[i]];
