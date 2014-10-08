@@ -216,7 +216,7 @@ VOID getRealStackBase()
 
 UINT64 fixstack(UINT64 pageaddr, int real_tid[], THREADID first)
 {
-	if (pageaddr < 10 * 1000 * 1000)
+	if (pageaddr < 100 * 1000 * 1000)
 		return pageaddr;
 
 	// cout << "pg " << pageaddr << endl;
