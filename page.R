@@ -29,7 +29,7 @@ nnodes = as.numeric(args[2])
 threads = grep("T\\d+", names(data))
 nthreads = length(threads)
 tpn = nthreads / nnodes
-nodes=c((ncol(data)+1):(ncol(data)+nnodes))
+nodes = c((ncol(data)+1):(ncol(data)+nnodes))
 n = split(threads, ceiling(seq_along(threads)/tpn))
 
 ttn=c()
@@ -214,7 +214,7 @@ data$excl_round = pmax(pmin(round(data$excl/10)*10, 90), excl_min)
 data$excl_round = paste(ifelse(data$excl_round==excl_min,"<",""), ifelse(data$excl_round=="90",">",""), data$excl_round, "%", sep="")
 
 excl = data.frame(data.table(data)[order(excl_round), sum(max), by=excl_round])
-cat("\t excl_round\t #accesses\n")
+cat("\t Rounded exclusivity\t number of accesses\n")
 cat("\t =========================\n")
 for (i in 1:nrow(excl))
 	cat("\t", excl[i,1], "\t\t", excl[i,2], "\n")

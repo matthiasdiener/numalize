@@ -4,6 +4,8 @@ files = list.files(pattern="\\.page\\.csv$")
 
 nnodes = 4
 
+cat("#nodes:", nnodes, "\n")
+
 excl = c()
 
 addn = function(frame) {
@@ -30,7 +32,7 @@ addn = function(frame) {
 	return(frame)
 }
 
-tmp=list()
+tmp = list()
 
 for (i in 1:length(files)) {
 	cat("Reading ", files[i], " (", i, "/" ,length(files), ")", sep="")
@@ -38,7 +40,7 @@ for (i in 1:length(files)) {
 	cat("\tdone\n")
 }
 
-cn=tmp[[1]]
+cn = tmp[[1]]
 
 for (i in 2:length(tmp)) {
 	cat("Merging file ", i, "/", length(tmp), sep="")
@@ -49,12 +51,13 @@ for (i in 2:length(tmp)) {
 }
 
 
+# remove addr column
 cn= cn[-1]
 
 
 cnt2 = function(vec) {
-	cur=0
-	res=vector()
+	cur = 0
+	res = vector()
 	for (i in 1:length(vec)) {
 		if (cur != vec[i] && !is.na(vec[i])) {
 			cur = vec[i]
@@ -71,16 +74,19 @@ cnt2 = function(vec) {
 
 res = apply(cn, 1, cnt2)
 res = data.frame(t(res))
+names(res) = sub("X", "Step", names(res))
 res[nrow(res)+1,] = colSums(res)
 res$sum = rowSums(res)
 
-excl=c(excl, 0)
+excl = c(round(excl, 2), 0)
 
 res = rbind(res, excl)
 
 row.names(res)[nrow(res)] = "excl"
 row.names(res)[nrow(res)-1] = "nmig"
 
-write.csv(res, file="page_dyn.csv")
+res = cbind(id=rownames(res), res)
 
-cat("Created file page_dyn.csv")
+write.csv(res, file="page_dyn.csv", quote=F, row.names=F)
+
+cat("Created file page_dyn.csv\n")
