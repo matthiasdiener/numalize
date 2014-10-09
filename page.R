@@ -40,7 +40,7 @@ cat("#nodes:", nnodes, "  #threads:", nthreads, "  #threads per node:", tpn, "\n
 cat("thread to node assignment:\n")
 i = 0
 for (x in n) {
-	cat("\tNode ", i, ":", sprintf("%5d", x-4), "\n", sep="")
+	cat("\tNode ", i, ":", sprintf("%4d", x-3), "  (n=", length(x), ")\n", sep="")
 	i = i+1
 }
 
