@@ -37,5 +37,5 @@ time -p pin -xyzzy -enable_vsm 0 -t $DIR/obj-*/*.so ${@}
 rm -f $OUTFILE
 
 for f in $PROG.*.page.csv; do
-	sort -t, -g -k 2 -o $f $f
+	sort -n -t, -k 1,1 -o $f $f
 done
