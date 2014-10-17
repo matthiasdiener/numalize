@@ -7,7 +7,7 @@ DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 (cd $DIR; make -q || make)
 
 PROGARGS=$(echo ${@} | sed s,.*--\ ,,)
-PROG=$(basename $PROGARGS | sed s,\\s.*,,)
+PROG=$(echo $PROGARGS | { read first rest; echo $(basename $first) | sed s,\\s.*,, ; } )
 OUTFILE=$PROG.stackmap
 
 PAGESIZE=$(getconf PAGESIZE)
