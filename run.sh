@@ -4,6 +4,14 @@ set -o errexit; set -o nounset
 
 DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+VA_RANDOM=$(sysctl -n kernel.randomize_va_space)
+if [ $VA_RANDOM -eq 0 ]; then
+	echo; echo "WARNING"
+	echo "sysctl kernel.randomize_va_space needs to be 0 (is $VA_RANDOM currently)"
+	echo "Generated information will be incorrect"
+	echo "WARNING"; echo
+fi
+
 (cd $DIR; make -q || make)
 
 PROGARGS=$(echo ${@} | sed s,.*--\ ,,)
