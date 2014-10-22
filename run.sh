@@ -2,16 +2,19 @@
 
 set -o errexit; set -o nounset
 
+# directory of run.sh
 DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# randomizing the virtual address space needs to be off for correct traces
 VA_RANDOM=$(sysctl -n kernel.randomize_va_space)
 if [ $VA_RANDOM -ne 0 ]; then
-	echo; echo "WARNING"
+	echo; echo "WARNING WARNING WARNING"
 	echo "sysctl kernel.randomize_va_space needs to be 0 (it is $VA_RANDOM currently)"
 	echo "Generated information will be incorrect"
-	echo "WARNING"; echo
+	echo "WARNING WARNING WARNING"; echo
 fi
 
+# recompile pintool if necessary
 (cd $DIR; make -q || make)
 
 PROGARGS=$(echo ${@} | sed s,.*--\ ,,)
@@ -21,8 +24,6 @@ OUTFILE=$PROG.stackmap
 PAGESIZE=$(getconf PAGESIZE)
 
 echo "Gathering stack information via gdb"
-
-rm -f gdb.txt
 
 cat > stack.gdb << EOF
 	python import os, math
@@ -56,6 +57,7 @@ cat > stack.gdb << EOF
 	python f2.close()
 EOF
 
+# run gdb with stack script
 gdb --batch-silent --command=stack.gdb --args $PROGARGS
 
 rm -f stack.gdb
@@ -76,13 +78,15 @@ else
 fi
 
 
-# exit
+# finally, run pin
 echo -e "\n\nRunning pin"
 
 time -p pin -xyzzy -enable_vsm 0 -t $DIR/obj-*/*.so ${@}
 
 rm -f $OUTFILE ${OUTFILE}2
 
+
+# sort output page csv according to page address
 for f in $PROG.*.page.csv; do
 	sort -n -t, -k 1,1 -o $f $f
 done
