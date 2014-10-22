@@ -16,7 +16,7 @@ fi
 
 PROGARGS=$(echo ${@} | sed s,.*--\ ,,)
 PROG=$(echo $PROGARGS | { read first rest; echo $(basename $first) | sed s,\\s.*,, ; } )
-OUTFILE=$PROG.gdbstackmap
+OUTFILE=$PROG.stackmap
 
 PAGESIZE=$(getconf PAGESIZE)
 
@@ -26,11 +26,11 @@ rm -f gdb.txt
 
 cat > stack.gdb << EOF
 	python import os, math
-	python pagebits=int(math.log($PAGESIZE, 2))
-	python fname = os.path.basename(gdb.objfiles()[0].filename)
-	python f = open(fname + ".gdbstackmap", 'w')
-	python f2 = open(fname + ".gdbstackmap2", 'w')
+	python pagebits = int(math.log($PAGESIZE, 2))
+	python f = open("$OUTFILE", 'w')
+	python f2 = open("$OUTFILE" + "2", 'w')
 
+	# for Pthreads programs:
 	catch syscall exit
 	commands 1
 		python print(gdb.selected_thread().num-1, int(gdb.parse_and_eval('\$rsp')) >> pagebits, file=f)
@@ -43,6 +43,7 @@ cat > stack.gdb << EOF
 		continue
 	end
 
+	# for OpenMP programs:
 	break exit
 	commands 3
 		python for x in gdb.inferiors()[0].threads(): id=x.num; print(id); gdb.execute("thread " + str(id)); print(id-1, int(gdb.parse_and_eval('\$rsp')) >> pagebits, file=f2)
@@ -51,26 +52,36 @@ cat > stack.gdb << EOF
 
 	run
 
-	# python f.close()
-	# python f2.close()
-
+	python f.close()
+	python f2.close()
 EOF
 
-gdb --batch --command=stack.gdb --args $PROGARGS
+gdb --batch-silent --command=stack.gdb --args $PROGARGS
+
+rm -f stack.gdb
+
+sort -n -k 1,1 -o $OUTFILE $OUTFILE
+sort -n -k 1,1 -o ${OUTFILE}2 ${OUTFILE}2
+
+LEN1=$(wc -l $OUTFILE | cut -f 1 -d ' ')
+LEN2=$(wc -l ${OUTFILE}2 | cut -f 1 -d ' ')
+
+if [[ $LEN1 -gt $LEN2 ]]; then
+	echo "would choose $OUTFILE"
+	cat $OUTFILE
+else
+	echo "would choose ${OUTFILE}2"
+	cat ${OUTFILE}2
+	mv ${OUTFILE}2 ${OUTFILE}
+fi
+
 
 # exit
-# n=0
-# cat gdb.txt | grep '^$.*=' | tac | cut -f 3 -d ' ' | while read line; do  echo $line/$PAGESIZE | bc | sed -e s,^,$n\ , ; n=$((n+1)) ; done | tee $OUTFILE
-
-# rm -f gdb.txt
-
-cat $OUTFILE
-exit
 echo -e "\n\nRunning pin"
 
 time -p pin -xyzzy -enable_vsm 0 -t $DIR/obj-*/*.so ${@}
 
-rm -f $OUTFILE
+rm -f $OUTFILE ${OUTFILE}2
 
 for f in $PROG.*.page.csv; do
 	sort -n -t, -k 1,1 -o $f $f
