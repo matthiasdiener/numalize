@@ -2,9 +2,9 @@
 
 library(lattice) # for levelplot
 
-cleardiag = 1 # remove diagnoal?
-scale = 4 # font size
-every = 10 # every x thread IDs
+cleardiag = 1    # remove diagnoal?
+every = 5        # every x thread IDs
+scale = every/2  # font size
 
 args = commandArgs(trailingOnly=TRUE)
 
