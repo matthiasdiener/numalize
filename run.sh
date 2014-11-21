@@ -23,7 +23,7 @@ OUTFILE=$PROG.stackmap
 
 PAGESIZE=$(getconf PAGESIZE)
 
-echo "Gathering stack information via gdb"
+echo -e "## gathering stack information via gdb\n"
 
 cat > stack.gdb << EOF
 	python import os, math
@@ -69,17 +69,17 @@ LEN1=$(wc -l $OUTFILE | cut -f 1 -d ' ')
 LEN2=$(wc -l ${OUTFILE}2 | cut -f 1 -d ' ')
 
 if [[ $LEN1 -gt $LEN2 ]]; then
-	echo "would choose $OUTFILE"
+	echo -e "\n# chose $OUTFILE (pthreads)"
 	cat $OUTFILE
 else
-	echo "would choose ${OUTFILE}2"
+	echo -e "\n# chose ${OUTFILE}2 (openmp)"
 	cat ${OUTFILE}2
 	mv ${OUTFILE}2 ${OUTFILE}
 fi
 
 
 # finally, run pin
-echo -e "\n\nRunning pin"
+echo -e "\n\n## running pin"
 
 time -p pin -xyzzy -enable_vsm 0 -t $DIR/obj-*/*.so ${@}
 

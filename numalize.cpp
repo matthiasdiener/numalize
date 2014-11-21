@@ -236,7 +236,7 @@ UINT64 fixstack(UINT64 pageaddr, int real_tid[], THREADID first)
 		}
 	}
 
-	cout << "ERROR " << pageaddr << " T: " << first << endl;
+	cout << "STACK MISMATCH " << pageaddr << " T: " << first << endl;
 	return pageaddr;
 }
 
@@ -256,7 +256,7 @@ void print_numa()
 
 	sprintf(fname, "%s.%06ld.page.csv", img_name.c_str(), n++);
 
-	cout << fname << endl;
+	cout << ">>> " << fname << endl;
 
 	f.open(fname);
 
@@ -342,7 +342,7 @@ int main(int argc, char *argv[])
 	PAGESIZE = log2(sysconf(_SC_PAGESIZE));
 
 	if (!DOCOMM && !DOPAGE) {
-		cerr << "Error: need to choose at least one of communication (-c) or page usage (-p) detection" << endl;
+		cerr << "ERROR: need to choose at least one of communication (-c) or page usage (-p) detection" << endl;
     	cerr << endl << KNOB_BASE::StringKnobSummary() << endl;
     	return 1;
 	}
@@ -353,7 +353,7 @@ int main(int argc, char *argv[])
 
 	THREADID t = PIN_SpawnInternalThread(mythread, NULL, 0, NULL);
 	if (t!=1)
-		cerr << "ERROR " << t << endl;
+		cerr << "ERROR internal thread " << t << endl;
 
 	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 
