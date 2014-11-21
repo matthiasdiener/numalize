@@ -26,41 +26,69 @@ PAGESIZE=$(getconf PAGESIZE)
 echo -e "## gathering stack information via gdb\n"
 
 cat > stack.gdb << EOF
-	python import os, math
+	python import os, math, subprocess, sys
 	python pagebits = int(math.log($PAGESIZE, 2))
 	python f = open("$OUTFILE", 'w')
-	python f2 = open("$OUTFILE" + "2", 'w')
+	# python f2 = open("$OUTFILE" + "2", 'w')
+	python stack = [0,0,0,0,0,0,0,0,0,0,0]
 
 	# for Pthreads programs:
 	catch syscall exit
-	commands 1
-		python print(gdb.selected_thread().num-1, int(gdb.parse_and_eval('\$rsp')) >> pagebits, file=f)
-		continue
-	end
-
 	catch syscall exit_group
-	commands 2
-		python print(gdb.selected_thread().num-1, int(gdb.parse_and_eval('\$rsp')) >> pagebits, file=f)
-		continue
+	# catch syscall clone
+
+	commands 1-2
+python
+
+# ppid = gdb.selected_inferior().pid
+# pid = gdb.selected_thread().ptid[1]
+# tid = gdb.selected_thread().num - 1
+# line = subprocess.Popen("cat /proc/" + str(ppid) + "/maps | grep " + str(pid) + " | cut -f 1 -d ' '", shell=True, stdout=subprocess.PIPE).stdout.read().decode("utf-8")
+# print(ppid, tid, pid, file=sys.stderr)
+# min, max = line.split("-", 2)
+# print(min, max, file=sys.stderr)
+
+end
+continue
 	end
 
-	# for OpenMP programs:
-	break exit
-	commands 3
-		python for x in gdb.inferiors()[0].threads(): id=x.num; print(id); gdb.execute("thread " + str(id)); print(id-1, int(gdb.parse_and_eval('\$rsp')) >> pagebits, file=f2)
-		continue
-	end
+catch syscall clone
+commands 3
+python
+ppid = gdb.selected_inferior().pid
+if stack[0] == 0:
+	line = subprocess.Popen("cat /proc/" + str(ppid) + "/maps | grep stack | cut -f 1 -d ' '", shell=True, stdout=subprocess.PIPE).stdout.read().decode("utf-8")
+	if line:
+		min, max = line.split("-", 2)
+		print(0, ppid, min, max, file=sys.stderr)
+		stack[0] = 1
 
+for t in gdb.selected_inferior().threads():
+	tid = t.num - 1
+	pid = t.ptid[1]
+	if stack[tid] != 0:
+		continue
+	line = subprocess.Popen("cat /proc/" + str(ppid) + "/maps | grep " + str(pid) + " | cut -f 1 -d ' '", shell=True, stdout=subprocess.PIPE).stdout.read().decode("utf-8")
+
+	if line:
+		min, max = line.split("-", 2)
+		print(tid, pid, min, max, file=sys.stderr)
+		stack[tid] = 1
+end
+continue
+end
 	run
 
 	python f.close()
-	python f2.close()
+	# python f2.close()
 EOF
 
 # run gdb with stack script
 gdb --batch-silent --command=stack.gdb --args $PROGARGS
 
 rm -f stack.gdb
+
+exit
 
 sort -n -k 1,1 -o $OUTFILE $OUTFILE
 sort -n -k 1,1 -o ${OUTFILE}2 ${OUTFILE}2
