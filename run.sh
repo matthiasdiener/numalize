@@ -28,7 +28,7 @@ cat > stack.gdb << EOF
 	python import os, math, subprocess, sys
 	python pagebits = int(math.log($PAGESIZE, 2))
 	python f = open("$OUTFILE", 'w')
-	python stack = [0 for i in range(64)]
+	python stack = [0 for i in range(1024)]
 
 
 catch syscall clone
