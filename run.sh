@@ -8,10 +8,9 @@ DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # randomizing the virtual address space needs to be off for correct traces
 VA_RANDOM=$(sysctl -n kernel.randomize_va_space)
 if [ $VA_RANDOM -ne 0 ]; then
-	echo; echo "WARNING WARNING WARNING"
-	echo "sysctl kernel.randomize_va_space needs to be 0 (it is $VA_RANDOM currently)"
-	echo "Generated information will be incorrect"
-	echo "WARNING WARNING WARNING"; echo
+	echo "sysctl kernel.randomize_va_space needs to be 0 for a correct trace (it is $VA_RANDOM currently)"
+	echo "exiting"
+	exit 1
 fi
 
 # recompile pintool if necessary
@@ -29,58 +28,49 @@ cat > stack.gdb << EOF
 	python import os, math, subprocess, sys
 	python pagebits = int(math.log($PAGESIZE, 2))
 	python f = open("$OUTFILE", 'w')
-	# python f2 = open("$OUTFILE" + "2", 'w')
-	python stack = [0,0,0,0,0,0,0,0,0,0,0]
+	python stack = [0 for i in range(64)]
 
-	# for Pthreads programs:
-	catch syscall exit
-	catch syscall exit_group
-	# catch syscall clone
-
-	commands 1-2
-python
-
-# ppid = gdb.selected_inferior().pid
-# pid = gdb.selected_thread().ptid[1]
-# tid = gdb.selected_thread().num - 1
-# line = subprocess.Popen("cat /proc/" + str(ppid) + "/maps | grep " + str(pid) + " | cut -f 1 -d ' '", shell=True, stdout=subprocess.PIPE).stdout.read().decode("utf-8")
-# print(ppid, tid, pid, file=sys.stderr)
-# min, max = line.split("-", 2)
-# print(min, max, file=sys.stderr)
-
-end
-continue
-	end
 
 catch syscall clone
-commands 3
+commands 1
 python
 ppid = gdb.selected_inferior().pid
 if stack[0] == 0:
-	line = subprocess.Popen("cat /proc/" + str(ppid) + "/maps | grep stack | cut -f 1 -d ' '", shell=True, stdout=subprocess.PIPE).stdout.read().decode("utf-8")
+	line = subprocess.Popen("cat /proc/" + str(ppid) + "/maps | grep '\[stack\]' | cut -f 1 -d ' '", shell=True, stdout=subprocess.PIPE).stdout.read().decode("utf-8")
 	if line:
 		min, max = line.split("-", 2)
-		print(0, ppid, min, max, file=sys.stderr)
-		stack[0] = 1
+		min = int(min, 16) >> pagebits
+		max = int(max, 16) >> pagebits
+		# print(0, ppid, min, max, max-min, file=sys.stderr)
+		stack[0] = (min,max)
 
 for t in gdb.selected_inferior().threads():
 	tid = t.num - 1
 	pid = t.ptid[1]
 	if stack[tid] != 0:
 		continue
-	line = subprocess.Popen("cat /proc/" + str(ppid) + "/maps | grep " + str(pid) + " | cut -f 1 -d ' '", shell=True, stdout=subprocess.PIPE).stdout.read().decode("utf-8")
+	line = subprocess.Popen("cat /proc/" + str(ppid) + "/maps | grep '\[stack:" + str(pid) + "\]' | cut -f 1 -d ' '", shell=True, stdout=subprocess.PIPE).stdout.read().decode("utf-8")
 
 	if line:
 		min, max = line.split("-", 2)
-		print(tid, pid, min, max, file=sys.stderr)
-		stack[tid] = 1
+		min = int(min, 16) >> pagebits
+		max = int(max, 16) >> pagebits
+		# print(tid, pid, min, max, max-min, file=sys.stderr)
+		stack[tid] = (min,max)
 end
 continue
 end
 	run
 
-	python f.close()
-	# python f2.close()
+	python
+i=-1
+for t in stack:
+	i=i+1
+	if t!=0:
+		# print (i, t, file=sys.stderr)
+		print (i, t[1], file=f)
+f.close()
+end
 EOF
 
 # run gdb with stack script
@@ -88,30 +78,13 @@ gdb --batch-silent --command=stack.gdb --args $PROGARGS
 
 rm -f stack.gdb
 
-exit
-
-sort -n -k 1,1 -o $OUTFILE $OUTFILE
-sort -n -k 1,1 -o ${OUTFILE}2 ${OUTFILE}2
-
-LEN1=$(wc -l $OUTFILE | cut -f 1 -d ' ')
-LEN2=$(wc -l ${OUTFILE}2 | cut -f 1 -d ' ')
-
-if [[ $LEN1 -gt $LEN2 ]]; then
-	echo -e "\n# chose $OUTFILE (pthreads)"
-	cat $OUTFILE
-else
-	echo -e "\n# chose ${OUTFILE}2 (openmp)"
-	cat ${OUTFILE}2
-	mv ${OUTFILE}2 ${OUTFILE}
-fi
-
 
 # finally, run pin
 echo -e "\n\n## running pin"
 
 time -p pin -xyzzy -enable_vsm 0 -t $DIR/obj-*/*.so ${@}
 
-rm -f $OUTFILE ${OUTFILE}2
+# rm -f $OUTFILE ${OUTFILE}2
 
 
 # sort output page csv according to page address

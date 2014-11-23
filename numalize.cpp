@@ -34,7 +34,8 @@ array<unordered_map<UINT64, UINT64>, MAXTHREADS+1> ftmap;
 
 map<UINT32, UINT32> pidmap; // pid -> tid
 
-array<UINT64, MAXTHREADS> stackbase; // tid -> stack base address from file (unpinned application)
+// array<UINT64, MAXTHREADS> stackmin;
+array<UINT64, MAXTHREADS> stackmax; // tid -> stack base address from file (unpinned application)
 map<UINT32, UINT64> stackmap; // stack base address from pinned application
 unsigned stacklimit; // stack limit (ulimit -s)
 
@@ -97,20 +98,20 @@ VOID do_comm(ADDRINT addr, THREADID tid)
 static inline
 UINT64 get_tsc()
 {
-#if defined(__i386) || defined(__x86_64__)
-  unsigned int lo, hi;
-  __asm__ __volatile__ (
-     "cpuid \n"
-     "rdtsc"
-   : "=a"(lo), "=d"(hi) /* outputs */
-   : "a"(0)             /* inputs */
-   : "%ebx", "%ecx");     /* clobbers*/
-  return ((UINT64)lo) | (((UINT64)hi) << 32);
-#elif defined(__ia64)
-  UINT64 r;
-  __asm__ __volatile__ ("mov %0=ar.itc" : "=r" (r) :: "memory");
-  return r;
-#endif
+	#if defined(__i386) || defined(__x86_64__)
+		unsigned int lo, hi;
+		__asm__ __volatile__ (
+			"cpuid \n"
+			"rdtsc"
+			: "=a"(lo), "=d"(hi) /* outputs */
+			: "a"(0)             /* inputs */
+			: "%ebx", "%ecx");   /* clobbers*/
+	  return ((UINT64)lo) | (((UINT64)hi) << 32);
+	#elif defined(__ia64)
+		UINT64 r;
+		__asm__ __volatile__ ("mov %0=ar.itc" : "=r" (r) :: "memory");
+		return r;
+	#endif
 }
 
 VOID do_numa(ADDRINT addr, THREADID tid)
@@ -158,6 +159,7 @@ VOID ThreadStart(THREADID tid, CONTEXT *ctxt, INT32 flags, VOID *v)
 	int pid = PIN_GetTid();
 	pidmap[pid] = tid ? tid - 1 : tid;
 	stackmap[pid] = PIN_GetContextReg(ctxt, REG_STACK_PTR) >> PAGESIZE;
+	// cout << tid << " " << pid << " " << stackmap[pid] << endl;
 }
 
 
@@ -202,12 +204,12 @@ VOID getRealStackBase()
 
 	string line;
 	int tid;
-	UINT64 addr;
+	UINT64 maxaddr;
 
 	while (getline(ifs, line)) {
 		stringstream lineStream(line);
-		lineStream >> tid >> addr;
-		stackbase[tid] = addr;
+		lineStream >> tid >> maxaddr;
+		stackmax[tid] = maxaddr;
 	}
 
 	ifs.close();
@@ -227,7 +229,7 @@ UINT64 fixstack(UINT64 pageaddr, int real_tid[], THREADID first)
 		if (abs(diff) <= stacklimit) {
 			int tid = real_tid[pidmap[it.first]];
 
-			int fixup = stackbase[tid] - stackmap[it.first]; //should be stackmap[tid]???
+			int fixup = stackmax[tid] - stackmap[it.first]; //should be stackmap[tid]???
 
 			pageaddr += fixup;
 			// cout << "    fixup T" << tid << " " << fixup << ": " << pageaddr-fixup << "->" << pageaddr << endl;
@@ -263,7 +265,7 @@ void print_numa()
 	for (auto it : pidmap){
 		real_tid[it.second] = i++;
 		cout << it.second << "->" << i-1 << " Stack " << stackmap[it.first] << endl;
- 	}
+	}
 
 	f << "addr,firstacc";
 	for (int i = 0; i<num_threads; i++)
@@ -272,6 +274,7 @@ void print_numa()
 
 	getRealStackBase();
 
+	// determine which thread accessed each page first
 	for (int tid = 0; tid<num_threads; tid++) {
 		for (auto it : pagemap[tid]) {
 			finalmap[it.first][tid] = pagemap[tid][it.first];
@@ -280,7 +283,7 @@ void print_numa()
 		}
 	}
 
-
+	// fix stack and print pages to csv
 	for(auto it : finalmap) {
 		UINT64 pageaddr = fixstack(it.first, real_tid, finalft[it.first].second);
 		f << pageaddr << "," << finalft[it.first].second;
@@ -343,8 +346,8 @@ int main(int argc, char *argv[])
 
 	if (!DOCOMM && !DOPAGE) {
 		cerr << "ERROR: need to choose at least one of communication (-c) or page usage (-p) detection" << endl;
-    	cerr << endl << KNOB_BASE::StringKnobSummary() << endl;
-    	return 1;
+		cerr << endl << KNOB_BASE::StringKnobSummary() << endl;
+		return 1;
 	}
 
 	struct rlimit limit;
