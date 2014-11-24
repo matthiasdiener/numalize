@@ -362,8 +362,10 @@ int main(int argc, char *argv[])
 	if (DOPAGE)
 		INS_AddInstrumentFunction(trace_memory_page, 0);
 
-	if (DOCOMM)
+	if (DOCOMM) {
 		INS_AddInstrumentFunction(trace_memory_comm, 0);
+		commmap.reserve(100*1000*1000);
+	}
 
 	IMG_AddInstrumentFunction(binName, 0);
 	PIN_AddThreadStartFunction(ThreadStart, 0);
