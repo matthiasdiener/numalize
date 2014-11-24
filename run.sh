@@ -24,16 +24,20 @@ PAGESIZE=$(getconf PAGESIZE)
 
 echo -e "## gathering stack information via gdb\n"
 
+# create stack script
 cat > stack.gdb << EOF
-	python import os, math, subprocess, sys
-	python pagebits = int(math.log($PAGESIZE, 2))
-	python f = open("$OUTFILE", 'w')
-	python stack = [0 for i in range(1024)]
-
+python
+import os, math, subprocess, sys
+pagebits = int(math.log($PAGESIZE, 2))
+f = open("$OUTFILE", 'w')
+stack = [0 for i in range(1024)]
+end
 
 catch syscall clone
 commands 1
+
 python
+from __future__ import print_function
 ppid = gdb.selected_inferior().pid
 if stack[0] == 0:
 	line = subprocess.Popen("cat /proc/" + str(ppid) + "/maps | grep '\[stack\]' | cut -f 1 -d ' '", shell=True, stdout=subprocess.PIPE).stdout.read().decode("utf-8")
@@ -41,7 +45,7 @@ if stack[0] == 0:
 		min, max = line.split("-", 2)
 		min = int(min, 16) >> pagebits
 		max = int(max, 16) >> pagebits
-		# print(0, ppid, min, max, max-min, file=sys.stderr)
+		print(0, ppid, min, max, max-min, file=sys.stderr)
 		stack[0] = (min,max)
 
 for t in gdb.selected_inferior().threads():
@@ -55,20 +59,22 @@ for t in gdb.selected_inferior().threads():
 		min, max = line.split("-", 2)
 		min = int(min, 16) >> pagebits
 		max = int(max, 16) >> pagebits
-		# print(tid, pid, min, max, max-min, file=sys.stderr)
+		print(tid, pid, min, max, max-min, file=sys.stderr)
 		stack[tid] = (min,max)
 end
 continue
 end
-	run
 
-	python
+
+run
+
+python
+from __future__ import print_function
 i=-1
 for t in stack:
 	i=i+1
 	if t!=0:
-		# print (i, t, file=sys.stderr)
-		print (i, t[1], file=f)
+		print (i, t[1], t[1]-t[0], file=f)
 f.close()
 end
 EOF

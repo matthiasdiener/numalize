@@ -34,10 +34,9 @@ array<unordered_map<UINT64, UINT64>, MAXTHREADS+1> ftmap;
 
 map<UINT32, UINT32> pidmap; // pid -> tid
 
-// array<UINT64, MAXTHREADS> stackmin;
-array<UINT64, MAXTHREADS> stackmax; // tid -> stack base address from file (unpinned application)
-map<UINT32, UINT64> stackmap; // stack base address from pinned application
-unsigned stacklimit; // stack limit (ulimit -s)
+array<UINT64, MAXTHREADS> stacksize; // stack size of each thread in pages
+array<UINT64, MAXTHREADS> stackmax;  // tid -> stack base address from file (unpinned application)
+map<UINT32, UINT64> stackmap;        // stack base address from pinned application
 
 string img_name;
 
@@ -111,6 +110,8 @@ UINT64 get_tsc()
 		UINT64 r;
 		__asm__ __volatile__ ("mov %0=ar.itc" : "=r" (r) :: "memory");
 		return r;
+	#else
+		#error "architecture not supported"
 	#endif
 }
 
@@ -153,13 +154,13 @@ VOID ThreadStart(THREADID tid, CONTEXT *ctxt, INT32 flags, VOID *v)
 {
 	__sync_add_and_fetch(&num_threads, 1);
 
-	if (num_threads>=MAXTHREADS+1)
+	if (num_threads>=MAXTHREADS+1) {
 		cerr << "ERROR: num_threads (" << num_threads << ") higher than MAXTHREADS (" << MAXTHREADS << ")." << endl;
+	}
 
 	int pid = PIN_GetTid();
 	pidmap[pid] = tid ? tid - 1 : tid;
 	stackmap[pid] = PIN_GetContextReg(ctxt, REG_STACK_PTR) >> PAGESIZE;
-	// cout << tid << " " << pid << " " << stackmap[pid] << endl;
 }
 
 
@@ -204,12 +205,13 @@ VOID getRealStackBase()
 
 	string line;
 	int tid;
-	UINT64 maxaddr;
+	UINT64 maxaddr, size;
 
 	while (getline(ifs, line)) {
 		stringstream lineStream(line);
-		lineStream >> tid >> maxaddr;
+		lineStream >> tid >> maxaddr >> size;
 		stackmax[tid] = maxaddr;
+		stacksize[tid] = size;
 	}
 
 	ifs.close();
@@ -225,9 +227,9 @@ UINT64 fixstack(UINT64 pageaddr, int real_tid[], THREADID first)
 
 	for (auto it : stackmap) {
 		long diff = (it.second + 1 - pageaddr);
+		int tid = real_tid[pidmap[it.first]];
 		// cout << "  " << it.second << " " << abs(diff) << endl;
-		if (abs(diff) <= stacklimit) {
-			int tid = real_tid[pidmap[it.first]];
+		if ((UINT64)labs(diff) <= stacksize[tid]) {
 
 			int fixup = stackmax[tid] - stackmap[it.first]; //should be stackmap[tid]???
 
@@ -238,7 +240,7 @@ UINT64 fixstack(UINT64 pageaddr, int real_tid[], THREADID first)
 		}
 	}
 
-	cout << "STACK MISMATCH " << pageaddr << " T: " << first << endl;
+	cout << "STACK MISMATCH " << pageaddr << " T: " << first <<  " rtid: " << real_tid[pidmap[first]] << endl;
 	return pageaddr;
 }
 
@@ -260,11 +262,13 @@ void print_numa()
 
 	cout << ">>> " << fname << endl;
 
+	getRealStackBase();
+
 	f.open(fname);
 
 	for (auto it : pidmap){
 		real_tid[it.second] = i++;
-		cout << it.second << "->" << i-1 << " Stack " << stackmap[it.first] << endl;
+		cout << it.second << "->" << i-1 << " Stack " << stackmap[it.first] << " " << stacksize[i-1] << endl;
 	}
 
 	f << "addr,firstacc";
@@ -272,7 +276,6 @@ void print_numa()
 		f << ",T" << i;
 	f << "\n";
 
-	getRealStackBase();
 
 	// determine which thread accessed each page first
 	for (int tid = 0; tid<num_threads; tid++) {
@@ -349,10 +352,6 @@ int main(int argc, char *argv[])
 		cerr << endl << KNOB_BASE::StringKnobSummary() << endl;
 		return 1;
 	}
-
-	struct rlimit limit;
-	getrlimit (RLIMIT_STACK, &limit);
-	stacklimit = limit.rlim_cur / 1024 / 4;
 
 	THREADID t = PIN_SpawnInternalThread(mythread, NULL, 0, NULL);
 	if (t!=1)
