@@ -9,8 +9,10 @@ printnum = 0     # print cell values?
 
 myPanel <- function(x, y, z, ...) {
 	panel.levelplot(x,y,z,...)
-	if (printnum)
+	if (printnum) {
+		panel.abline(h=c(1:(nt-1))+0.5, v=c(1:(nt-1))+0.5)
 		panel.text(x, y, round(z,1),cex=scale)
+	}
 }
 
 args = commandArgs(trailingOnly=TRUE)
@@ -50,7 +52,7 @@ for (i in 1:length(args)) {
 			mat[i,i] = 0
 
 	pdf(outfilename, family="NimbusSan", width=nt, height=nt)
-	print(levelplot(mat, panel=myPanel, col.regions=grey(seq(1,0.5,-0.01)), colorkey=F, xlab="", ylab="", scales=list(x=list(cex=scale,at=seq(1,nt,every)), y=list(cex=scale,at=seq(1,nt,every)))))
+	print(levelplot(mat, panel=myPanel, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab="", ylab="", scales=list(x=list(cex=scale,at=seq(1,nt,every)), y=list(cex=scale,at=seq(1,nt,every)))))
 	garbage <- dev.off()
 
 	embedFonts(outfilename)
