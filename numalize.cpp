@@ -170,7 +170,10 @@ VOID print_matrix()
 	ofstream f;
 	char fname[255];
 
-	sprintf(fname, "%s.%06ld.comm.csv", img_name.c_str(), n++);
+	if (INTERVAL)
+		sprintf(fname, "%s.%06ld.comm.csv", img_name.c_str(), n++);
+	else
+		sprintf(fname, "%s.full.comm.csv", img_name.c_str());
 
 	int real_tid[MAXTHREADS+1];
 	int i = 0, a, b;
@@ -258,7 +261,10 @@ void print_numa()
 	ofstream f;
 	char fname[255];
 
-	sprintf(fname, "%s.%06ld.page.csv", img_name.c_str(), n++);
+	if (INTERVAL)
+		sprintf(fname, "%s.%06ld.page.csv", img_name.c_str(), n++);
+	else
+		sprintf(fname, "%s.full.page.csv", img_name.c_str());
 
 	cout << ">>> " << fname << endl;
 
