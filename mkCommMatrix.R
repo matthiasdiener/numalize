@@ -51,8 +51,10 @@ for (i in 1:length(args)) {
 		for (i in 1:nt)
 			mat[i,i] = 0
 
+	optlist=list(cex=scale,limits=range(-0.5:nt+1),labels=seq(0,nt-1,every),tck=c(1,0),at=seq(1,nt,every))
+
 	pdf(outfilename, family="NimbusSan", width=nt, height=nt)
-	print(levelplot(mat, panel=myPanel, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab="", ylab="", scales=list(x=list(cex=scale,at=seq(1,nt,every)), y=list(cex=scale,at=seq(1,nt,every)))))
+	print(levelplot(mat, panel=myPanel, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab=NULL, ylab=NULL, scales=list(x=optlist, y=optlist)))
 	garbage <- dev.off()
 
 	embedFonts(outfilename)
