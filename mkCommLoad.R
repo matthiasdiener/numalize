@@ -63,6 +63,9 @@ for (i in 1:length(args)) {
 
 	mat = matrix(rowSums(mat))
 
+	mat = mat/max(mat) * 100
+	v = var(mat)[1,1]
+
 	optlist=list(cex=scale,limits=range(-0.5:nt+1),labels=seq(0,nt-1,every),tck=c(1,0),at=seq(1,nt,every))
 
 	pdf(outfilename, family="NimbusSan", width=nt, height=nt)
@@ -73,5 +76,5 @@ for (i in 1:length(args)) {
 
 	system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
 
-	cat("Generated", outfilename, "\n")
+	cat("Generated", outfilename, "var=", v, "\n")
 }
