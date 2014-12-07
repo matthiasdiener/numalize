@@ -15,6 +15,9 @@ myPanel <- function(x, y, z, ...) {
 	}
 }
 
+
+lambda=function(l) {return((max(l)/mean(l)-1)*100)}
+
 args = commandArgs(trailingOnly=TRUE)
 
 if (length(args) < 1)
@@ -64,7 +67,7 @@ for (i in 1:length(args)) {
 	mat = matrix(rowSums(mat))
 
 	mat = mat/max(mat) * 100
-	v = var(mat)[1,1]
+	v = lambda(mat)
 
 	optlist=list(cex=scale,limits=range(-0.5:nt+1),labels=seq(0,nt-1,every),tck=c(1,0),at=seq(1,nt,every))
 
