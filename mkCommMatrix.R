@@ -7,6 +7,17 @@ every = 5        # every x thread IDs
 scale = every/2  # font size
 printnum = 0     # print cell values?
 
+comm_het = function(frame) {
+	if (length(frame) < 8)
+	    return(0)
+	frame = frame / max(frame, na.rm=T) * 100
+	# frame[frame>30] = 100
+	return(mean(apply(frame, 1, var, na.rm=T)))
+}
+
+comm_avg = function(frame)
+	return(sum(as.numeric(unlist(frame)))/length(frame)/length(frame))
+
 myPanel = function(x, y, z, ...) {
 	panel.levelplot(x,y,z,...)
 	if (printnum) {
@@ -63,5 +74,5 @@ for (filename in args) {
 
 	system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
 
-	cat("Generated", outfilename, "\n")
+	cat("Generated", outfilename, " hetero: ", comm_het(csv), " avg:", comm_avg(csv),"\n")
 }
