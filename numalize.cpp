@@ -13,7 +13,7 @@
 
 #include "pin.H"
 
-const int MAXTHREADS = 64;
+const int MAXTHREADS = 1024;
 int PAGESIZE;
 
 KNOB<int> COMMSIZE(KNOB_MODE_WRITEONCE, "pintool", "cs", "6", "comm shift in bits");
