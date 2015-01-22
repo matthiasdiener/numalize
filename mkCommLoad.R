@@ -50,10 +50,12 @@ for (i in 1:length(args)) {
 	mat = data.matrix(csv)
 	mat = t(mat[nrow(mat):1,])
 
+	# clear diagonal
 	if (cleardiag==1)
 		for (i in 1:nt)
 			mat[i,i] = 0
 
+	# remove lower part of the matrix
 	for (i in 1:nt) {
 		if (i<nt/2)
 			for (j in 1:i)
