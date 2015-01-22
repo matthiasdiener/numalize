@@ -42,8 +42,9 @@ string img_name;
 
 
 static inline
-VOID inc_comm(int a, int b) {
-	if (a!=b-1)
+VOID inc_comm(int a, int b)
+{
+	// if (a!=b-1)
 		comm_matrix[a][b-1]++;
 }
 
@@ -69,26 +70,26 @@ VOID do_comm(ADDRINT addr, THREADID tid)
 			break;
 
 		case 1: /* one previous access => needs to be in pos 0 */
-			if (a != tid+1) {
+			// if (a != tid+1) {
 				inc_comm(tid, a);
 				commmap[line][1] = a;
 				commmap[line][0] = tid+1;
-			}
+			// }
 			break;
 
 		case 2: // two previous accesses
-			if (a != tid+1 && b != tid+1) {
+			// if (a != tid+1 && b != tid+1) {
 				inc_comm(tid, a);
 				inc_comm(tid, b);
 				commmap[line][1] = a;
 				commmap[line][0] = tid+1;
-			} else if (a == tid+1) {
-				inc_comm(tid, b);
-			} else if (b == tid+1) {
-				inc_comm(tid, a);
-				commmap[line][1] = a;
-				commmap[line][0] = tid+1;
-			}
+			// } else if (a == tid+1) {
+			// 	inc_comm(tid, b);
+			// } else if (b == tid+1) {
+			// 	inc_comm(tid, a);
+			// 	commmap[line][1] = a;
+			// 	commmap[line][0] = tid+1;
+			// }
 
 			break;
 	}

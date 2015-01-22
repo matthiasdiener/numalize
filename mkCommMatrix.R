@@ -60,6 +60,15 @@ for (filename in args) {
 	mat = data.matrix(csv)
 	mat = t(mat[nrow(mat):1,])
 
+	private = 0
+	comm = 0
+
+	for (i in 1:nt)
+		for (j in 1:nt)
+			if (i!=j) comm = comm + mat[i,j]
+			else private = private + mat[i,j]
+
+
 	if (cleardiag==1)
 		for (i in 1:nt)
 			mat[i,i] = 0
@@ -74,5 +83,5 @@ for (filename in args) {
 
 	system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
 
-	cat("Generated", outfilename, " hetero: ", comm_het(csv), " avg:", comm_avg(csv),"\n")
+	cat("Generated", outfilename, " hetero: ", comm_het(mat), " avg:", comm_avg(mat), " comm_ratio:", comm/private *100, "%\n")
 }
