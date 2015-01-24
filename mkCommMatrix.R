@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 
 library(lattice) # for levelplot
+options(digits=3)
 
 cleardiag = 1    # remove diagnoal?
 every = 5        # every x thread IDs
@@ -17,6 +18,8 @@ comm_het = function(frame) {
 
 comm_avg = function(frame)
 	return(sum(as.numeric(unlist(frame)))/length(frame)/length(frame))
+
+lambda = function(l) {return((max(l)/mean(l)-1)*100)}
 
 myPanel = function(x, y, z, ...) {
 	panel.levelplot(x,y,z,...)
@@ -73,15 +76,43 @@ for (filename in args) {
 		for (i in 1:nt)
 			mat[i,i] = 0
 
+	het = comm_het(mat)
+	cavg = comm_avg(mat)
+
 	optlist=list(cex=scale,limits=range(-0.5:nt+1),labels=seq(0,nt-1,every),tck=c(1,0),at=seq(1,nt,every))
 
+	# generate comm matrix
 	pdf(outfilename, family="NimbusSan", width=nt, height=nt)
 	print(levelplot(mat, panel=myPanel, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab=NULL, ylab=NULL, scales=list(x=optlist, y=optlist)))
+	garbage = dev.off()
+
+	embedFonts(outfilename)
+	system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
+
+
+	# remove lower part of the matrix
+	for (i in 1:nt) {
+		if (i<nt/2)
+			for (j in 1:i)
+				mat[i,j] = 0
+		else
+			for (j in i:nt)
+				mat[i,j] = 0
+	}
+
+	mat = matrix(rowSums(mat))
+	mat = mat/max(mat) * 100
+	l = lambda(mat)
+	outfilename = gsub(".pdf", ".load.pdf", outfilename)
+
+	# generate comm balance
+	pdf(outfilename, family="NimbusSan", width=nt, height=nt)
+	print(levelplot(mat, panel=myPanel, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab=NULL, ylab=NULL, scales=list(x=optlist,y=list(labels=NULL,tck=c(0,0)))))
 	garbage = dev.off()
 
 	embedFonts(outfilename)
 
 	system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
 
-	cat("Generated", outfilename, " hetero: ", comm_het(mat), " avg:", comm_avg(mat), " comm_ratio:", comm/private *100, "%\n")
+	cat("Generated", outfilename, " hetero:", het, "\tavg:", cavg, "\tlambda:", l, "\tcomm_ratio:", comm/private *100, "%\n")
 }
