@@ -38,7 +38,12 @@ for (filename in files) {
 	n = split(threads, ceiling(seq_along(threads)/tpn))
 
 	ttn=c()
+
+	# compact thread mapping:
 	for (i in 1:length(n)) ttn[n[[i]]-2] = i
+
+	# far thread mapping:
+	# ttn = rep_len(1:nnodes, nthreads)
 
 	cat("### Input data:\n\n")
 	cat("#nodes:", nnodes, "  #threads:", nthreads, "  #threads per node:", tpn, "\n\n")
