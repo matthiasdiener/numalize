@@ -244,7 +244,8 @@ UINT64 fixstack(UINT64 pageaddr, int real_tid[], THREADID first)
 		}
 	}
 
-	cout << "STACK MISMATCH " << pageaddr << " T: " << first <<  " rtid: " << real_tid[pidmap[first]] << endl;
+	// can also be .so mapped into address space:
+	// cout << "STACK MISMATCH " << pageaddr << " T: " << first <<  " rtid: " << real_tid[pidmap[first]] << endl;
 	return pageaddr;
 }
 
