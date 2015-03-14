@@ -9,11 +9,21 @@ scale = every/2  # font size
 printnum = 0     # print cell values?
 
 comm_het = function(frame) {
-	if (length(frame) < 8)
-	    return(0)
+	nt = ncol(frame)
 	frame = frame / max(frame, na.rm=T) * 100
-	# frame[frame>30] = 100
-	return(mean(apply(frame, 1, var, na.rm=T)))
+
+	for (i in 1:ncol(frame))
+		frame[i,i] = NA
+
+	v = 0
+	for (i in 1:(nt-2)) v = v + var(frame[i:nt,i], na.rm=T)
+	val1 = v / nt
+
+	v = 0
+	for (i in 3:nt) v = v + var(frame[1:i,i], na.rm=T)
+	val2 = v / nt
+
+	return(min(val1,val2))
 }
 
 comm_avg = function(frame)
@@ -56,9 +66,8 @@ for (filename in args) {
 	}
 
 	nt = ncol(csv)
-
-	rownames(csv) = rev(as.integer(rownames(csv)) - 1)
-	colnames(csv) = rev(rownames(csv))
+	if (ncol(csv) != nrow(csv))
+		stop("Input matrix is not square")
 
 	mat = data.matrix(csv)
 	mat = t(mat[nrow(mat):1,])
