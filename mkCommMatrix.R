@@ -4,9 +4,8 @@ library(lattice) # for levelplot
 options(digits=3)
 
 cleardiag = 1    # remove diagnoal?
-every = 5        # every x thread IDs
-scale = every/2  # font size
 printnum = 0     # print cell values?
+scale=3.5        # font scale
 
 comm_het = function(frame) {
 	nt = ncol(frame)
@@ -88,10 +87,23 @@ for (filename in args) {
 	het = comm_het(mat)
 	cavg = comm_avg(mat)
 
+	if (nt<=8)
+		every=1
+	else if (nt<=32)
+		every=5
+	else if (nt<=128)
+		every=10
+	else if (nt<1000)
+		every=100
+	else {
+		every=200
+		scale=3
+	}
+
 	optlist=list(cex=scale,limits=range(-0.5:nt+1),labels=seq(0,nt-1,every),tck=c(1,0),at=seq(1,nt,every))
 
 	# generate comm matrix
-	pdf(outfilename, family="NimbusSan", width=nt, height=nt)
+	pdf(outfilename, family="NimbusSan")
 	print(levelplot(mat, panel=myPanel, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab=NULL, ylab=NULL, scales=list(x=optlist, y=optlist)))
 	garbage = dev.off()
 
@@ -115,7 +127,7 @@ for (filename in args) {
 	outfilename = gsub(".pdf", ".load.pdf", outfilename)
 
 	# generate comm balance
-	pdf(outfilename, family="NimbusSan", width=nt, height=nt)
+	pdf(outfilename, family="NimbusSan")
 	print(levelplot(mat, panel=myPanel, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab=NULL, ylab=NULL, scales=list(x=optlist,y=list(labels=NULL,tck=c(0,0)))))
 	garbage = dev.off()
 
@@ -123,5 +135,5 @@ for (filename in args) {
 
 	system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
 
-	cat("Generated", outfilename, " hetero:", het, "\tavg:", cavg, "\tlambda:", l, "\tcomm_ratio:", comm/private *100, "%\n")
+	cat("Generated", outfilename, " hetero:", het, "\tavg:", cavg, "\tbalance:", l, "\tratio:", comm/private *100, "%\n")
 }
