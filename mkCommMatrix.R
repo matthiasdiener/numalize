@@ -9,6 +9,8 @@ scale=3.5        # font scale
 
 comm_het = function(frame) {
 	nt = ncol(frame)
+	if (nt<4)
+		return(0)
 	frame = frame / max(frame, na.rm=T) * 100
 
 	for (i in 1:ncol(frame))
