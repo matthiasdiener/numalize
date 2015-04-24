@@ -6,6 +6,7 @@ options(digits=3)
 cleardiag = 1    # remove diagnoal?
 printnum = 0     # print cell values?
 scale=3.5        # font scale
+printtid = 1     # print thread IDs?
 
 comm_het = function(frame) {
 	nt = ncol(frame)
@@ -102,7 +103,11 @@ for (filename in args) {
 		scale=3
 	}
 
-	optlist=list(cex=scale,limits=range(-0.5:nt+1),labels=seq(0,nt-1,every),tck=c(1,0),at=seq(1,nt,every))
+	if (printtid)
+		optlist=list(cex=scale,limits=range(-0.5:nt+1),labels=seq(0,nt-1,every),tck=c(1,0),at=seq(1,nt,every))
+	else
+		optlist=list(cex=scale,limits=range(-0.5:nt+1),labels=NULL,tck=c(0,0),at=seq(1,nt,every))
+
 
 	# generate comm matrix
 	pdf(outfilename, family="NimbusSan")
