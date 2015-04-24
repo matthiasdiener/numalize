@@ -36,6 +36,8 @@ for (filename in files) {
 	tpn = nthreads / nnodes
 	nodes = c((ncol(data)+1):(ncol(data)+nnodes))
 	n = split(threads, ceiling(seq_along(threads)/tpn))
+	## 0,4,2,6,1,5,3,7:
+	# n=list(c(3,7), c(5,9), c(4,8), c(6,10))
 
 	ttn=c()
 
