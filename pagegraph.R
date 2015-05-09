@@ -24,7 +24,7 @@ for (filename in files) {
 	cat("##### File:", filename, "\n")
 	data = read.csv(filename)
 
-	outfilename = paste0(sub(".csv.*", ".excl", filename), ".pdf")
+	outfilename = paste0(sub(".csv.*", ".excl", filename), ".png")
 
 	# # for larger pages:
 	# data$addr = data$addr %/% 512
@@ -68,17 +68,12 @@ for (filename in files) {
 	cat("\napplication exclusivity:\n\t", sum(data$max, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%\n")
 
 
-
-	pdf(outfilename, family="NimbusSan", width=8, height=4)
-
+	png(outfilename, family="NimbusSan", width=700, height=400)
+	par(mar=c(4,4,0,0)+0.1)
 	plot(data$excl, data$sum, pch=20, log="y", xlab="Exclusivity (%)", ylab="# memory accesses", xlim=c(20,100), frame.plot = F)
 	abline(v=sum(data$max)/sum(data$sum)*100)
 
 	garbage = dev.off()
-
-	embedFonts(outfilename)
-
-	system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
 
 	cat("Generated", outfilename, "\n")
 }
