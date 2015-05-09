@@ -12,15 +12,22 @@ options(mc.cores=max(as.numeric(system("grep 'processor' /proc/cpuinfo | sort | 
 
 
 comm_het = function(frame) {
-	if (length(frame) < 8)
+	nt = ncol(frame)
+	if (nt<8)
 		return(0)
+	for (i in 1:ncol(frame))
+		frame[i,i] = 0
 	frame = frame / max(frame, na.rm=T) * 100
 	frame[frame>30] = 100
 	return(mean(apply(frame, 1, var, na.rm=T)))
 }
 
-comm_avg = function(frame)
+comm_avg = function(frame) {
+	nt = ncol(frame)
+	for (i in 1:ncol(frame))
+		frame[i,i] = 0
 	return(sum(as.numeric(unlist(frame)))/length(frame)/length(frame))
+}
 
 
 read_het_avg = function(file) {
@@ -55,9 +62,9 @@ for (x in het_mean) {
 	xold=x
 
 }
-cat ("\nn=", n, "\n")
+cat ("\nn= ", n, "\n")
 
-write.csv(data.frame(het, avg), "comm_dyn.csv")
+write.csv(data.frame(het, avg), "comm_dyn.csv", quote=F)
 
 png("comm_dyn.png", width=1920, res=100)
 
