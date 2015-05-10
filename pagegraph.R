@@ -1,17 +1,5 @@
 #!/usr/bin/env Rscript
 
-# mappings:
-# - rr_node: round-robin mapping of pages to nodes
-# - inter_node: rr based on page address (equal to numactl -i all; uses last bits of page addr to determine node)
-# - local_node: put page on node with highest number of memory accesses
-# - remote_node: put page on the node with the lowest number of accesses (opposite of locality)
-# - bal_node: rr, such that number of memory accesses to all nodes are equal
-# - mixed_node: locality for pages with high exclusivity, interleave for low excl.
-# - random_node: random assignment
-
-# options(digits=4, scipen=1000)
-library(data.table)
-
 args = commandArgs(trailingOnly=T)
 nargs = length(args)
 if (nargs < 2)
@@ -27,6 +15,7 @@ for (filename in files) {
 	outfilename = paste0(sub(".csv.*", ".excl", filename), ".png")
 
 	# # for larger pages:
+	# library(data.table)
 	# data$addr = data$addr %/% 512
 	# data = data.table(data)
 	# data = data[, lapply(.SD, as.numeric)]
@@ -63,6 +52,9 @@ for (filename in files) {
 	data$max = do.call(pmax, data[nodes])
 
 	data$excl = data$max / data$sum * 100
+	data$first_node = ttn[data$firstacc+2]
+
+	excl = sum(data$max)/sum(data$sum)*100
 
 
 	cat("\napplication exclusivity:\n\t", sum(data$max, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%\n")
@@ -70,9 +62,18 @@ for (filename in files) {
 
 	png(outfilename, family="NimbusSan", width=700, height=400)
 	par(mar=c(4,4,0,0)+0.1)
-	plot(data$excl, data$sum, pch=20, log="y", xlab="Exclusivity (%)", ylab="# memory accesses", xlim=c(20,100), frame.plot = F)
-	abline(v=sum(data$max)/sum(data$sum)*100)
 
+	plot(data$excl[data$first_node==1], data$sum[data$first_node==1], pch=20, log="y", xlab="Exclusivity (%)", ylab="# memory accesses", xlim=c(20,100), frame.plot = F, col=1)
+
+	for(i in 2:nnodes)
+		points(data$excl[data$first_node==i], data$sum[data$first_node==i], pch=20, col=i)
+
+	legend(x="top", legend=paste0("N",1:nnodes), pch=20, col=c(1:nnodes))
+
+
+	abline(v=excl)
+	par(xpd=NA)
+	text(excl, 1, sprintf("%2.2f%%",excl), adj=c(0.5,4))
 	garbage = dev.off()
 
 	cat("Generated", outfilename, "\n")
