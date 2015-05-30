@@ -74,22 +74,28 @@ for (filename in files) {
 
 	abline(v=excl)
 	par(xpd=NA)
-	text(excl, 1, sprintf("%2.2f%%",excl), adj=c(0.5,4))
+	text(excl, 1, sprintf("%2.2f%%",excl), adj=c(0.5,1))
 	garbage = dev.off()
 	cat("Generated", outfilename, "\n")
 
 	png(outfilename2, family="NimbusSan", width=2700, height=1200, res=300, type='cairo-png')
-	par(mar=c(4,4,0,0)+0.6, mfrow=c(1,4))
+	par(mar=c(4,4,0.2,0)+0.6, mfrow=c(1,4))
 
 	ymax = sum(data$sum[data$first_node==1], na.rm=T)
 
 	plot(data$excl[data$first_node==1], data$sum[data$first_node==1], pch=20, xlab="Exclusivity (%)", ylab="# memory accesses", log='y', frame.plot = F, col=1, xlim=c(0,100), ylim=c(1,ymax) )
 
 	abline(h=ymax)
+	par(xpd=NA)
+	text(80, ymax, format(ymax,scientific=T,digits=3), pos=3)
+	par(xpd=F)
 
 	for(i in 2:nnodes) {
 		plot(data$excl[data$first_node==i], data$sum[data$first_node==i], pch=20, xlab="Exclusivity (%)", ylab="", frame.plot = F,  col=1, xlim=c(0,100), log='y', ylim=c(1,ymax))
 		abline(h=sum(data$sum[data$first_node==i],na.rm=T))
+		par(xpd=NA)
+		text(80, sum(data$sum[data$first_node==i],na.rm=T), format(sum(data$sum[data$first_node==i],na.rm=T),scientific=T,digits=3), pos=3)
+		par(xpd=F)
 	}
 
 	garbage = dev.off()
