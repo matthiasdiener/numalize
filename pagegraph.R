@@ -13,6 +13,7 @@ for (filename in files) {
 	data = read.csv(filename)
 
 	outfilename = paste0(sub(".csv.*", ".excl", filename), ".png")
+	outfilename2 = paste0(sub(".csv.*", ".balance", filename), ".png")
 
 	# # for larger pages:
 	# library(data.table)
@@ -60,7 +61,7 @@ for (filename in files) {
 	cat("\napplication exclusivity:\n\t", sum(data$max, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%\n")
 
 
-	png(outfilename, family="NimbusSan", width=700, height=400)
+	png(outfilename, family="NimbusSan", width=2700, height=1200, res=300, type='cairo-png')
 	par(mar=c(4,4,0,0)+0.1)
 
 	plot(data$excl[data$first_node==1], data$sum[data$first_node==1], pch=20, log="y", xlab="Exclusivity (%)", ylab="# memory accesses", xlim=c(20,100), frame.plot = F, col=1)
@@ -75,6 +76,23 @@ for (filename in files) {
 	par(xpd=NA)
 	text(excl, 1, sprintf("%2.2f%%",excl), adj=c(0.5,4))
 	garbage = dev.off()
-
 	cat("Generated", outfilename, "\n")
+
+	png(outfilename2, family="NimbusSan", width=2700, height=1200, res=300, type='cairo-png')
+	par(mar=c(4,4,0,0)+0.6, mfrow=c(1,4))
+
+	ymax = sum(data$sum[data$first_node==1], na.rm=T)
+
+	plot(data$excl[data$first_node==1], data$sum[data$first_node==1], pch=20, xlab="Exclusivity (%)", ylab="# memory accesses", log='y', frame.plot = F, col=1, xlim=c(0,100), ylim=c(1,ymax) )
+
+	abline(h=ymax)
+
+	for(i in 2:nnodes) {
+		plot(data$excl[data$first_node==i], data$sum[data$first_node==i], pch=20, xlab="Exclusivity (%)", ylab="", frame.plot = F,  col=1, xlim=c(0,100), log='y', ylim=c(1,ymax))
+		abline(h=sum(data$sum[data$first_node==i],na.rm=T))
+	}
+
+	garbage = dev.off()
+
+	cat("Generated", outfilename2, "\n")
 }
