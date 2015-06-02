@@ -235,9 +235,9 @@ for (filename in files) {
 	cat("\napplication exclusivity:\n\t", sum(data$max, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%\n")
 
 
-	#### Accuracy
+	#### Locality
 
-	cat("\naccuracy (% pages):\n")
+	cat("\nlocality (% pages):\n")
 
 	cat("\tfirst_touch:\t", sprintf("%6.2f\n", sum((data$local_node == data$first_touch))/npages*100))
 	cat("\tlocal_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$local_node))/npages*100))
@@ -249,7 +249,7 @@ for (filename in files) {
 	cat("\tbal_node:\t", sprintf("%6.2f\n", sum((data$bal_node == data$local_node))/npages*100))
 
 
-	cat("\naccuracy (% accesses):\n")
+	cat("\nlocality (% accesses):\n")
 
 	cat("\tfirst_touch:\t", sprintf("%6.2f\n", sum((data$local_node == data$first_touch) * data$sum, na.rm=TRUE)/total))
 	cat("\tlocal_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$local_node) * data$sum, na.rm=TRUE)/total))
