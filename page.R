@@ -1,16 +1,21 @@
 #!/usr/bin/env Rscript
 
 # mappings:
-# - rr_node: round-robin mapping of pages to nodes
-# - inter_node: rr based on page address (equal to numactl -i all; uses last bits of page addr to determine node)
+# - first_node: place page on node that performs first access
 # - local_node: put page on node with highest number of memory accesses
 # - remote_node: put page on the node with the lowest number of accesses (opposite of locality)
-# - bal_node: rr, such that number of memory accesses to all nodes are equal
-# - mixed_node: locality for pages with high exclusivity, interleave for low excl.
+# - rr_node: round-robin mapping of pages to nodes
+# - inter_node: rr based on page address (equal to numactl -i all; uses last bits of page addr to determine node)
 # - random_node: random assignment
+# - mixed_node: locality for pages with high exclusivity, interleave for low excl.
+# - bal_node: rr, such that number of memory accesses to all nodes are equal
 
 options(digits=4, scipen=1000)
 library(data.table)
+
+writepages = 0 # write page mappings to csv files?
+
+mappings = c("first_node", "local_node", "remote_node", "rr_node", "inter_node", "random_node", "mixed_node", "bal_node")
 
 args = commandArgs(trailingOnly=T)
 nargs = length(args)
@@ -73,11 +78,8 @@ for (filename in files) {
 	npages = nrow(data)
 	total = sum(data$sum) / 100
 
-
 	#### Page mappings
-
-	data$first_touch = ttn[data$firstacc+1]
-
+	data$first_node = ttn[data$firstacc+1]
 	data$local_node = max.col(data[nodes], "first")
 
 	mymin = function(x) {
@@ -86,14 +88,11 @@ for (filename in files) {
 		mi[which.max(abs(mi-ma))]
 	}
 	data$remote_node = apply(data[nodes], 1, mymin)
-
 	data$rr_node = rep(c(1:nnodes), length.out=npages)
-
 	data$inter_node = (data$addr %% nnodes) + 1
 
 	set.seed(1)
 	data$random_node = floor(runif(npages, 1, nnodes+1))
-
 	data$mixed_node = ifelse(data$excl > 95, data$local_node, data$rr_node)
 
 	totaln = sum(data$sum) / nnodes
@@ -113,107 +112,21 @@ for (filename in files) {
 
 
 	#### Memory Balance
-
 	cat("\nmemory balance (# pages):")
-	cat("\n\tfirst_touch:\t")
-	for (i in 1:nnodes)
-		cat(max(table(data$first_touch)[i],0,na.rm=T), "")
-	cat("\n\tlocal_node:\t")
-	for (i in 1:nnodes)
-		cat(max(table(data$local_node)[i],0,na.rm=T), "")
-	cat("\n\tremote_node:\t")
-	for (i in 1:nnodes)
-		cat(max(table(data$remote_node)[i],0,na.rm=T), "")
-	cat("\n\trr_node:\t")
-	for (i in 1:nnodes)
-		cat(max(table(data$rr_node)[i],0,na.rm=T), "")
-	cat("\n\tinter_node:\t")
-	for (i in 1:nnodes)
-		cat(max(table(data$inter_node)[i],0,na.rm=T), "")
-	cat("\n\trandom_node:\t")
-	for (i in 1:nnodes)
-		cat(max(table(data$random_node)[i],0,na.rm=T), "")
-	cat("\n\tmixed_node:\t")
-	for (i in 1:nnodes)
-		cat(max(table(data$mixed_node)[i],0,na.rm=T), "")
-	cat("\n\tbal_node:\t")
-	for (i in 1:nnodes)
-		cat(max(table(data$bal_node)[i],0,na.rm=T), "")
+	for (map in mappings) {
+		cat("\n\t", map, ":\t", sep="")
+		pages = ftable(data[,map])
+		cat(pages)
+		cat("\t(B_Pages: ", (max(pages)/mean(pages)-1)*100, ")", sep="")
+	}
 
 	cat("\n\nmemory balance (% accesses):")
-	cat("\n\tfirst_touch:\t")
-	amax=0
-	amin=100
-	for (i in 1:nnodes){
-		cat(sprintf("%5.2f ", sum(data$sum[data$first_touch==i], na.rm=T)/total))
-		amax=max(amax, sum(data$sum[data$first_touch==i], na.rm=T)/total)
-		amin=min(amin, sum(data$sum[data$first_touch==i], na.rm=T)/total)
+	for (map in mappings) {
+		cat("\n\t", map, ":\t", sep="")
+		sums = rowsum(data$sum, data[,map])/total
+		cat(sprintf("%5.2f", sums))
+		cat("\t(B_Acc: ", (max(sums)/mean(sums)-1)*100, ")", sep="")
 	}
-	cat("(", 100-(amax-amin), ")", sep="")
-	cat("\n\tlocal_node:\t")
-	amax=0
-	amin=100
-	for (i in 1:nnodes){
-		cat(sprintf("%5.2f ", sum(data$sum[data$local_node==i], na.rm=T)/total))
-		amax=max(amax, sum(data$sum[data$local_node==i], na.rm=T)/total)
-		amin=min(amin, sum(data$sum[data$local_node==i], na.rm=T)/total)
-	}
-	cat("(", 100-(amax-amin), ")", sep="")
-	cat("\n\tremote_node:\t")
-	amax=0
-	amin=100
-	for (i in 1:nnodes){
-		cat(sprintf("%5.2f ", sum(data$sum[data$remote_node==i], na.rm=T)/total))
-		amax=max(amax, sum(data$sum[data$remote_node==i], na.rm=T)/total)
-		amin=min(amin, sum(data$sum[data$remote_node==i], na.rm=T)/total)
-	}
-	cat("(", 100-(amax-amin), ")", sep="")
-	cat("\n\trr_node:\t")
-	amax=0
-	amin=100
-	for (i in 1:nnodes){
-		cat(sprintf("%5.2f ", sum(data$sum[data$rr_node==i], na.rm=T)/total))
-		amax=max(amax, sum(data$sum[data$rr_node==i], na.rm=T)/total)
-		amin=min(amin, sum(data$sum[data$rr_node==i], na.rm=T)/total)
-	}
-	cat("(", 100-(amax-amin), ")", sep="")
-	cat("\n\tinter_node:\t")
-	amax=0
-	amin=100
-	for (i in 1:nnodes){
-		cat(sprintf("%5.2f ", sum(data$sum[data$inter_node==i], na.rm=T)/total))
-		amax=max(amax, sum(data$sum[data$inter_node==i], na.rm=T)/total)
-		amin=min(amin, sum(data$sum[data$inter_node==i], na.rm=T)/total)
-	}
-	cat("(", 100-(amax-amin), ")", sep="")
-	cat("\n\trandom_node:\t")
-	amax=0
-	amin=100
-	for (i in 1:nnodes){
-		cat(sprintf("%5.2f ", sum(data$sum[data$random_node==i], na.rm=T)/total))
-		amax=max(amax, sum(data$sum[data$random_node==i], na.rm=T)/total)
-		amin=min(amin, sum(data$sum[data$random_node==i], na.rm=T)/total)
-	}
-	cat("(", 100-(amax-amin), ")", sep="")
-	cat("\n\tmixed_node:\t")
-	amax=0
-	amin=100
-	for (i in 1:nnodes){
-		cat(sprintf("%5.2f ", sum(data$sum[data$mixed_node==i], na.rm=T)/total))
-		amax=max(amax, sum(data$sum[data$mixed_node==i], na.rm=T)/total)
-		amin=min(amin, sum(data$sum[data$mixed_node==i], na.rm=T)/total)
-	}
-	cat("(", 100-(amax-amin), ")", sep="")
-	cat("\n\tbal_node:\t")
-	amax=0
-	amin=100
-	for (i in 1:nnodes){
-		cat(sprintf("%5.2f ", sum(data$sum[data$bal_node==i], na.rm=T)/total))
-		amax=max(amax, sum(data$sum[data$bal_node==i], na.rm=T)/total)
-		amin=min(amin, sum(data$sum[data$bal_node==i], na.rm=T)/total)
-	}
-	cat("(", 100-(amax-amin), ")", sep="")
-
 
 	#### Exclusivity
 	cat("\n\npage exclusivity (rounded):\n")
@@ -234,45 +147,22 @@ for (filename in files) {
 
 	cat("\napplication exclusivity:\n\t", sum(data$max, na.rm=TRUE)/sum(data$sum, na.rm=TRUE)*100, "%\n")
 
-
 	#### Locality
+	cat("\nlocality (Loc_Pages, % pages):\n")
+	for (map in mappings)
+		cat("\t", map, ":\t", sprintf("%6.2f\n", sum((data$local_node == data[,map]))/npages*100), sep="")
 
-	cat("\nlocality (% pages):\n")
-
-	cat("\tfirst_touch:\t", sprintf("%6.2f\n", sum((data$local_node == data$first_touch))/npages*100))
-	cat("\tlocal_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$local_node))/npages*100))
-	cat("\tremote_node:\t", sprintf("%6.2f\n", sum((data$remote_node == data$local_node))/npages*100))
-	cat("\trr_node:\t", sprintf("%6.2f\n", sum((data$rr_node == data$local_node))/npages*100))
-	cat("\tinter_node:\t", sprintf("%6.2f\n", sum((data$inter_node == data$local_node))/npages*100))
-	cat("\trandom_node:\t", sprintf("%6.2f\n", sum((data$random_node == data$local_node))/npages*100))
-	cat("\tmixed_node:\t", sprintf("%6.2f\n", sum((data$mixed_node == data$local_node))/npages*100))
-	cat("\tbal_node:\t", sprintf("%6.2f\n", sum((data$bal_node == data$local_node))/npages*100))
-
-
-	cat("\nlocality (% accesses):\n")
-
-	cat("\tfirst_touch:\t", sprintf("%6.2f\n", sum((data$local_node == data$first_touch) * data$sum, na.rm=TRUE)/total))
-	cat("\tlocal_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$local_node) * data$sum, na.rm=TRUE)/total))
-	cat("\tremote_node:\t", sprintf("%6.2f\n", sum((data$remote_node == data$local_node) * data$sum, na.rm=TRUE)/total))
-	cat("\trr_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$rr_node) * data$sum, na.rm=TRUE)/total))
-	cat("\tinter_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$inter_node) * data$sum, na.rm=TRUE)/total))
-	cat("\trandom_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$random_node) * data$sum, na.rm=TRUE)/total))
-	cat("\tmixed_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$mixed_node) * data$sum, na.rm=TRUE)/total))
-	cat("\tbal_node:\t", sprintf("%6.2f\n", sum((data$local_node == data$bal_node) * data$sum, na.rm=TRUE)/total))
-
+	cat("\nlocality (Loc_App, % accesses):\n")
+	for (map in mappings)
+		cat("\t", map, ":\t", sprintf("%6.2f\n", sum((data$local_node == data[,map]) * data$sum, na.rm=TRUE)/total), sep="")
 
 	#### Write mappings to csv files
+	if (writepages) {
+		cat("\n\n### Writing mappings to csv files...")
+		for (map in mappings)
+			write.table(data[, c("addr", map)], file=paste(filename, ".", map, sep=""), row.names=F, col.names=F)
+		cat("\n\twrote", paste(filename, ".*", sep=""))
+	}
 
-	cat("\n\n### Writing mappings to csv files...")
-
-	write.table(data[, c("addr", "first_touch")], file=paste(filename, ".first", sep=""), row.names=F, col.names=F)
-	write.table(data[, c("addr", "local_node")], file=paste(filename, ".local", sep=""), row.names=F, col.names=F)
-	write.table(data[, c("addr", "remote_node")], file=paste(filename, ".remote", sep=""), row.names=F, col.names=F)
-	write.table(data[, c("addr", "rr_node")], file=paste(filename, ".rr", sep=""), row.names=F, col.names=F)
-	write.table(data[, c("addr", "inter_node")], file=paste(filename, ".inter", sep=""), row.names=F, col.names=F)
-	write.table(data[, c("addr", "random_node")], file=paste(filename, ".random", sep=""), row.names=F, col.names=F)
-	write.table(data[, c("addr", "mixed_node")], file=paste(filename, ".mixed", sep=""), row.names=F, col.names=F)
-	write.table(data[, c("addr", "bal_node")], file=paste(filename, ".bal", sep=""), row.names=F, col.names=F)
-
-	cat("  done.\n")
+	cat("\n### done.\n")
 }
