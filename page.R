@@ -10,6 +10,8 @@
 # - mixed: locality for pages with high exclusivity, interleave for low exclusivity
 # - balance: distribute pages such that the number of memory accesses to all nodes are equal
 
+# time ./page.R ~/Dropbox/PageUP/NAS-OMP-64T/new-stackfixed-turing/{bt,cg}*C*.csv.xz ~/Dropbox/PageUP/NAS-OMP-64T/new-stackfixed-turing/dc*B*.csv.xz ~/Dropbox/PageUP/NAS-OMP-64T/new-stackfixed-turing/{ep,ft,is,lu,mg,sp,ua}*C*.csv.xz ~/Dropbox/PageUP/Parsec-64T/{blackscholes,bodytrack,facesim,ferret,freqmine,raytrace,swaptions,fluidanimate,vips,x264,canneal,dedup,streamcluster}*new.csv.xz
+
 options(digits=4, scipen=1000, warn=2)
 library(data.table)
 library(optparse)
