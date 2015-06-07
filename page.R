@@ -223,7 +223,7 @@ cols = c(2:ncol(result))
 result[,cols] = as.numeric(as.character(unlist(result[,cols])))
 
 if (opt$write_table) {
-	outfilename = paste0(dirname(files[1]), "/pageusage.csv")
+	outfilename = paste0(dirname(files[1]), "/pageusage_",nnodes,"N.csv")
 	write.table(format(result, digits=4), file=outfilename, row.names=F, quote=F, sep=",")
 	cat("# Files:", files, "\n", file=outfilename, append=TRUE)
 	cat("# Nodes:", nnodes, "\n", file=outfilename, append=TRUE)
