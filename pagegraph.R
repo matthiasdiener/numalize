@@ -64,7 +64,7 @@ for (filename in files) {
 	png(outfilename, family="NimbusSan", width=2700, height=1200, res=300, type='cairo-png')
 	par(mar=c(4,4,0,0)+0.1)
 
-	plot(data$excl[data$first_node==1], data$sum[data$first_node==1], pch=20, log="y", xlab="Exclusivity (%)", ylab="# memory accesses", xlim=c(20,100), frame.plot = F, col=1)
+	plot(data$excl[data$first_node==1], data$sum[data$first_node==1], pch=20, log="y", xlab="Exclusivity (%)", ylab="Number of memory accesses", xlim=c(20,100), frame.plot = F, col=1)
 
 	for(i in 2:nnodes)
 		points(data$excl[data$first_node==i], data$sum[data$first_node==i], pch=20, col=i)
@@ -83,7 +83,7 @@ for (filename in files) {
 
 	ymax = sum(data$sum[data$first_node==1], na.rm=T)
 
-	plot(data$excl[data$first_node==1], data$sum[data$first_node==1], pch=20, xlab="Exclusivity (%)", ylab="# memory accesses", log='y', frame.plot = F, col=1, xlim=c(0,100), ylim=c(1,ymax) )
+	plot(data$excl[data$first_node==1], data$sum[data$first_node==1], pch=20, xlab="Exclusivity (%)", ylab="Number of memory accesses", log='y', frame.plot = F, col=1, xlim=c(0,100), ylim=c(1,ymax) )
 
 	abline(h=ymax)
 	par(xpd=NA)
