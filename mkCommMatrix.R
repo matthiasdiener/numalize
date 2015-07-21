@@ -119,28 +119,28 @@ for (filename in args) {
 
 
 	# remove lower part of the matrix
-	for (i in 1:nt) {
-		if (i<nt/2)
-			for (j in 1:i)
-				mat[i,j] = 0
-		else
-			for (j in i:nt)
-				mat[i,j] = 0
-	}
+	# for (i in 1:nt) {
+	# 	if (i<nt/2)
+	# 		for (j in 1:i)
+	# 			mat[i,j] = 0
+	# 	else
+	# 		for (j in i:nt)
+	# 			mat[i,j] = 0
+	# }
 
-	mat = matrix(rowSums(mat))
-	mat = mat/max(mat) * 100
-	l = lambda(mat)
-	outfilename = gsub(".pdf", ".load.pdf", outfilename)
+	# mat = matrix(rowSums(mat))
+	# mat = mat/max(mat) * 100
+	# l = lambda(mat)
+	# outfilename = gsub(".pdf", ".load.pdf", outfilename)
 
-	# generate comm balance
-	pdf(outfilename, family="NimbusSan")
-	print(levelplot(mat, panel=myPanel, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab=NULL, ylab=NULL, scales=list(x=optlist,y=list(labels=NULL,tck=c(0,0)))))
-	garbage = dev.off()
+	# # generate comm balance
+	# pdf(outfilename, family="NimbusSan")
+	# print(levelplot(mat, panel=myPanel, col.regions=grey(seq(1,0,-0.01)), colorkey=F, xlab=NULL, ylab=NULL, scales=list(x=optlist,y=list(labels=NULL,tck=c(0,0)))))
+	# garbage = dev.off()
 
-	embedFonts(outfilename)
+	# embedFonts(outfilename)
 
-	system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
+	# system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
 
-	cat("Generated", outfilename, " hetero:", het, "\tavg:", cavg, "\tbalance:", l, "\tratio:", comm/private *100, "%\n")
+	cat("Generated", outfilename, " hetero:", het, "\tavg:", cavg, "\tratio:", comm/private *100, "%\n")
 }
