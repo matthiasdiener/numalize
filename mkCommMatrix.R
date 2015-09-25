@@ -68,8 +68,10 @@ for (filename in args) {
 	}
 
 	nt = ncol(csv)
-	if (ncol(csv) != nrow(csv))
-		stop("Input matrix is not square")
+	if (ncol(csv) != nrow(csv)) {
+		cat(filename, "- input matrix is not square, skipping\n")
+		next
+	}
 
 	mat = data.matrix(csv)
 	mat = t(mat[nrow(mat):1,])
