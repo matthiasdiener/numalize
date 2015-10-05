@@ -44,13 +44,15 @@ string img_name;
 static inline
 VOID inc_comm(int a, int b)
 {
-	// if (a!=b-1)
+	if (a!=b-1)
 		comm_matrix[a][b-1]++;
 }
 
 
 VOID do_comm(ADDRINT addr, THREADID tid)
 {
+	if (num_threads < 2)
+		return;
 	UINT64 line = addr >> COMMSIZE;
 	tid = tid>=2 ? tid-1 : tid;
 	int sh = 1;
@@ -171,10 +173,12 @@ VOID print_matrix()
 	ofstream f;
 	char fname[255];
 
+	int cs = COMMSIZE;
+
 	if (INTERVAL)
-		sprintf(fname, "%s.%06ld.comm.csv", img_name.c_str(), n++);
+		sprintf(fname, "%s.%06ld.%d.comm.csv", img_name.c_str(), n++, cs);
 	else
-		sprintf(fname, "%s.full.comm.csv", img_name.c_str());
+		sprintf(fname, "%s.full.%d.comm.csv", img_name.c_str(), cs);
 
 	int real_tid[MAXTHREADS+1];
 	int i = 0, a, b;
