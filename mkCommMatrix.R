@@ -1,12 +1,12 @@
 #!/usr/bin/env Rscript
 
-library(lattice) # for levelplot
+library(lattice)  # for levelplot
 options(digits=3)
 
-cleardiag = 1    # remove diagnoal?
-printnum = 0     # print cell values?
-scale=3.5        # font scale
-printtid = 1     # print thread IDs?
+cleardiag = TRUE  # remove diagnoal?
+printnum = FALSE  # print cell values?
+scale = 3.5       # font scale
+printtid = TRUE   # print thread IDs?
 
 comm_het = function(frame) {
 	nt = ncol(frame)
@@ -85,7 +85,7 @@ for (filename in args) {
 			else private = private + mat[i,j]
 
 
-	if (cleardiag==1)
+	if (cleardiag)
 		for (i in 1:nt)
 			mat[i,i] = 0
 
@@ -96,7 +96,7 @@ for (filename in args) {
 		every=1
 	else if (nt<=32)
 		every=5
-	else if (nt<=128)
+	else if (nt<=256)
 		every=10
 	else if (nt<1000)
 		every=100
