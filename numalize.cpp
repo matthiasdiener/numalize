@@ -22,7 +22,6 @@ KNOB<int> INTERVAL(KNOB_MODE_WRITEONCE, "pintool", "i", "0", "print interval (ms
 KNOB<bool> DOCOMM(KNOB_MODE_WRITEONCE, "pintool", "c", "0", "enable comm detection");
 KNOB<bool> DOPAGE(KNOB_MODE_WRITEONCE, "pintool", "p", "0", "enable page usage detection");
 
-
 int num_threads = 0;
 
 UINT64 comm_matrix[MAXTHREADS][MAXTHREADS]; // comm matrix
@@ -33,10 +32,6 @@ array<unordered_map<UINT64, UINT64>, MAXTHREADS+1> pagemap;
 array<unordered_map<UINT64, UINT64>, MAXTHREADS+1> ftmap;
 
 map<UINT32, UINT32> pidmap; // pid -> tid
-
-array<UINT64, MAXTHREADS> stacksize; // stack size of each thread in pages
-array<UINT64, MAXTHREADS> stackmax;  // tid -> stack base address from file (unpinned application)
-map<UINT32, UINT64> stackmap;        // stack base address from pinned application
 
 string img_name;
 
@@ -163,7 +158,6 @@ VOID ThreadStart(THREADID tid, CONTEXT *ctxt, INT32 flags, VOID *v)
 
 	int pid = PIN_GetTid();
 	pidmap[pid] = tid ? tid - 1 : tid;
-	stackmap[pid] = PIN_GetContextReg(ctxt, REG_STACK_PTR) >> PAGESIZE;
 }
 
 
@@ -213,8 +207,6 @@ void print_numa()
 	unordered_map<UINT64, array<UINT64, MAXTHREADS+1>> finalmap;
 	unordered_map<UINT64, pair<UINT64, UINT32>> finalft;
 
-	int i = 0;
-
 	static long n = 0;
 	ofstream f;
 	char fname[255];
@@ -227,11 +219,6 @@ void print_numa()
 	cout << ">>> " << fname << endl;
 
 	f.open(fname);
-
-	for (auto it : pidmap){
-		real_tid[it.second] = i++;
-		cout << it.second << "->" << i-1 << " Stack " << stackmap[it.first] << " " << stacksize[i-1] << endl;
-	}
 
 	f << "addr,firstacc";
 	for (int i = 0; i<num_threads; i++)
