@@ -13,7 +13,7 @@ PROGARGS=$(echo ${@} | sed s,.*--\ ,,)
 PROG=$(echo $PROGARGS | { read first rest; echo $(basename $first) | sed s,\\s.*,, ; } )
 
 # Run pin
-echo -e "\n\n## running pin: $PROGARGS"
+echo "### running pin: $PROGARGS"
 
 time -p pin -xyzzy -enable_vsm 0 -t $DIR/obj-*/*.so ${@}
 
