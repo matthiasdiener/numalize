@@ -206,54 +206,6 @@ VOID print_matrix()
 }
 
 
-VOID getRealStackBase()
-{
-	ifstream ifs;
-	ifs.open(img_name + ".stackmap");
-
-	string line;
-	int tid;
-	UINT64 maxaddr, size;
-
-	while (getline(ifs, line)) {
-		stringstream lineStream(line);
-		lineStream >> tid >> maxaddr >> size;
-		stackmax[tid] = maxaddr;
-		stacksize[tid] = size;
-	}
-
-	ifs.close();
-}
-
-
-UINT64 fixstack(UINT64 pageaddr, int real_tid[], THREADID first)
-{
-	if (pageaddr < 100 * 1000 * 1000)
-		return pageaddr;
-
-	// cout << "pg " << pageaddr << endl;
-
-	for (auto it : stackmap) {
-		long diff = (it.second + 1 - pageaddr);
-		int tid = real_tid[pidmap[it.first]];
-		// cout << "  " << it.second << " " << abs(diff) << endl;
-		if ((UINT64)labs(diff) <= stacksize[tid]) {
-
-			int fixup = stackmax[tid] - stackmap[it.first]; //should be stackmap[tid]???
-
-			pageaddr += fixup;
-			// cout << "    fixup T" << tid << " " << fixup << ": " << pageaddr-fixup << "->" << pageaddr << endl;
-
-			return pageaddr;
-		}
-	}
-
-	// can also be .so mapped into address space:
-	// cout << "STACK MISMATCH " << pageaddr << " T: " << first <<  " rtid: " << real_tid[pidmap[first]] << endl;
-	return pageaddr;
-}
-
-
 void print_numa()
 {
 	int real_tid[MAXTHREADS+1];
@@ -273,8 +225,6 @@ void print_numa()
 		sprintf(fname, "%s.full.page.csv", img_name.c_str());
 
 	cout << ">>> " << fname << endl;
-
-	getRealStackBase();
 
 	f.open(fname);
 
@@ -300,7 +250,7 @@ void print_numa()
 
 	// fix stack and print pages to csv
 	for(auto it : finalmap) {
-		UINT64 pageaddr = fixstack(it.first, real_tid, finalft[it.first].second);
+		UINT64 pageaddr = it.first;
 		f << pageaddr << "," << finalft[it.first].second;
 
 		for (int i=0; i<num_threads; i++)
