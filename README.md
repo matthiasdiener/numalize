@@ -5,7 +5,7 @@ It is based on the Intel Pin Dynamic Binary Instrumentation (DBI) tool (https://
 
 
 # Requirements 
-- Intel Pin installation (by default in ```/opt/pin```, can be changed in the ```Makefile```). Note that Pin version 3.0 (76991) is currently not supported due to a Pin bug. Please use an older version. Pin 2.14 (71313) works fine.
+- Intel Pin installation (by default in ```/opt/pin```, can be changed in the ```Makefile```). Note that Pin version 3.0 (76991) is currently not supported due to a Pin bug. Please use an older version, Pin 2.14 (71313) works fine.
 
 # Usage
 
