@@ -161,7 +161,7 @@ VOID ThreadStart(THREADID tid, CONTEXT *ctxt, INT32 flags, VOID *v)
 }
 
 
-VOID print_matrix()
+VOID print_comm()
 {
 	static long n = 0;
 	ofstream f;
@@ -200,7 +200,7 @@ VOID print_matrix()
 }
 
 
-void print_numa()
+void print_page()
 {
 	int real_tid[MAXTHREADS+1];
 
@@ -259,11 +259,11 @@ VOID mythread(VOID * arg)
 			continue;
 
 		if (DOCOMM) {
-			print_matrix();
+			print_comm();
 			memset(comm_matrix, 0, sizeof(comm_matrix));
 		}
 		if (DOPAGE) {
-			print_numa();
+			print_page();
 			// for(auto it : pagemap)
 			// 	fill(begin(it.second), end(it.second), 0);
 		}
@@ -282,9 +282,9 @@ VOID binName(IMG img, VOID *v)
 VOID Fini(INT32 code, VOID *v)
 {
 	if (DOCOMM)
-		print_matrix();
+		print_comm();
 	if (DOPAGE)
-		print_numa();
+		print_page();
 
 	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 }
