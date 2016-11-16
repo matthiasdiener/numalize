@@ -1,7 +1,6 @@
 #!/usr/bin/env Rscript
 
 library(lattice)  # for levelplot
-options(digits=3)
 
 cleardiag = TRUE  # remove diagnoal?
 printnum = FALSE  # print cell values?
@@ -41,10 +40,14 @@ myPanel = function(x, y, z, ...) {
 	}
 }
 
+rsig = function(x, dig=3) {formatC(as.character(ifelse(x<1, round(x, dig), signif(x,dig+1))), width=-(dig+2), format="s")}
+
 args = commandArgs(trailingOnly=TRUE)
 
 if (length(args) < 1)
 	stop("Usage: mkCommMatrix.R <CommPattern.csv>...\n")
+
+maxlen = max(nchar(args))
 
 for (filename in args) {
 
@@ -96,8 +99,10 @@ for (filename in args) {
 		every=1
 	else if (nt<=32)
 		every=5
-	else if (nt<=256)
+	else if (nt<=128)
 		every=10
+	else if (nt<=256)
+		every=50
 	else if (nt<1000)
 		every=100
 	else {
@@ -121,18 +126,18 @@ for (filename in args) {
 
 
 	# remove lower part of the matrix
-	# for (i in 1:nt) {
-	# 	if (i<nt/2)
-	# 		for (j in 1:i)
-	# 			mat[i,j] = 0
-	# 	else
-	# 		for (j in i:nt)
-	# 			mat[i,j] = 0
-	# }
+	for (i in 1:nt) {
+		if (i<nt/2)
+			for (j in 1:i)
+				mat[i,j] = 0
+		else
+			for (j in i:nt)
+				mat[i,j] = 0
+	}
 
-	# mat = matrix(rowSums(mat))
-	# mat = mat/max(mat) * 100
-	# l = lambda(mat)
+	mat = matrix(rowSums(mat))
+	mat = mat/max(mat) * 100
+	l = lambda(mat)
 	# outfilename = gsub(".pdf", ".load.pdf", outfilename)
 
 	# # generate comm balance
@@ -144,5 +149,5 @@ for (filename in args) {
 
 	# system(paste("pdfcrop ", outfilename, outfilename, "> /dev/null"))
 
-	cat("Generated", outfilename, " hetero:", het, "\tavg:", cavg, "\tratio:", comm/private *100, "%\n")
+	cat(formatC(outfilename, width=-maxlen), "het:", rsig(het), "avg:", rsig(cavg), "ratio:", (comm/private *100), "%", "imbal:", rsig(l), "\n")
 }
