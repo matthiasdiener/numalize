@@ -14,7 +14,7 @@
 #include "pin.H"
 
 const int MAXTHREADS = 1024;
-int PAGESIZE;
+int MYPAGESIZE;
 
 KNOB<int> COMMSIZE(KNOB_MODE_WRITEONCE, "pintool", "cs", "6", "comm shift in bits");
 KNOB<int> INTERVAL(KNOB_MODE_WRITEONCE, "pintool", "i", "0", "print interval (ms) (0=disable)");
@@ -115,7 +115,7 @@ UINT64 get_tsc()
 
 VOID do_numa(ADDRINT addr, THREADID tid)
 {
-	UINT64 page = addr >> PAGESIZE;
+	UINT64 page = addr >> MYPAGESIZE;
 	tid = tid>=2 ? tid-1 : tid;
 
 	if (pagemap[tid][page]++ == 0)
@@ -252,7 +252,7 @@ void print_page()
 
 VOID mythread(VOID * arg)
 {
-	while(!PIN_IsProcessExiting()) {
+	while(1) {
 		PIN_Sleep(INTERVAL ? INTERVAL : 100);
 
 		if (INTERVAL == 0)
@@ -286,7 +286,7 @@ VOID Fini(INT32 code, VOID *v)
 	if (DOPAGE)
 		print_page();
 
-	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
+	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << MYPAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 }
 
 
@@ -294,7 +294,7 @@ int main(int argc, char *argv[])
 {
 	if (PIN_Init(argc,argv)) return 1;
 
-	PAGESIZE = log2(sysconf(_SC_PAGESIZE));
+	MYPAGESIZE = log2(sysconf(_SC_PAGESIZE));
 
 	if (!DOCOMM && !DOPAGE) {
 		cerr << "ERROR: need to choose at least one of communication (-c) or page usage (-p) detection" << endl;
@@ -306,7 +306,7 @@ int main(int argc, char *argv[])
 	if (t!=1)
 		cerr << "ERROR internal thread " << t << endl;
 
-	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << PAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
+	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << MYPAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 
 	if (DOPAGE)
 		INS_AddInstrumentFunction(trace_memory_page, 0);
