@@ -1,8 +1,11 @@
 #include <iostream>
 #include <sstream>
-#include <unordered_map>
+namespace std {
+    typedef decltype(nullptr) nullptr_t;
+}
+#include <boost/unordered_map.hpp>
+#include <boost/array.hpp>
 #include <map>
-#include <array>
 #include <cmath>
 #include <cstring>
 #include <fstream>
@@ -26,10 +29,10 @@ int num_threads = 0;
 
 UINT64 comm_matrix[MAXTHREADS][MAXTHREADS]; // comm matrix
 
-unordered_map<UINT64, array<UINT32,2>> commmap; // cache line -> list of tids that previously accesses
+boost::unordered_map<UINT64, boost::array<UINT32,2>> commmap; // cache line -> list of tids that previously accesses
 
-array<unordered_map<UINT64, UINT64>, MAXTHREADS+1> pagemap;
-array<unordered_map<UINT64, UINT64>, MAXTHREADS+1> ftmap;
+boost::array<boost::unordered_map<UINT64, UINT64>, MAXTHREADS+1> pagemap;
+boost::array<boost::unordered_map<UINT64, UINT64>, MAXTHREADS+1> ftmap;
 
 map<UINT32, UINT32> pidmap; // pid -> tid
 
@@ -204,8 +207,8 @@ void print_page()
 {
 	int real_tid[MAXTHREADS+1];
 
-	unordered_map<UINT64, array<UINT64, MAXTHREADS+1>> finalmap;
-	unordered_map<UINT64, pair<UINT64, UINT32>> finalft;
+	boost::unordered_map<UINT64, boost::array<UINT64, MAXTHREADS+1>> finalmap;
+	boost::unordered_map<UINT64, pair<UINT64, UINT32>> finalft;
 
 	static long n = 0;
 	ofstream f;
@@ -313,7 +316,7 @@ int main(int argc, char *argv[])
 
 	if (DOCOMM) {
 		INS_AddInstrumentFunction(trace_memory_comm, 0);
-		commmap.reserve(100*1000*1000);
+		commmap.rehash(100*1000*1000);
 	}
 
 	IMG_AddInstrumentFunction(binName, 0);
