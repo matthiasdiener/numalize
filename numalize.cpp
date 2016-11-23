@@ -1,9 +1,6 @@
 #include <iostream>
 #include <sstream>
-namespace std {
-    typedef decltype(nullptr) nullptr_t;
-}
-#include <boost/unordered_map.hpp>
+#include <tbb/concurrent_unordered_map.h>
 #include <boost/array.hpp>
 #include <map>
 #include <cmath>
@@ -29,10 +26,10 @@ int num_threads = 0;
 
 UINT64 comm_matrix[MAXTHREADS][MAXTHREADS]; // comm matrix
 
-boost::unordered_map<UINT64, boost::array<UINT32,2>> commmap; // cache line -> list of tids that previously accesses
+tbb::concurrent_unordered_map<UINT64, boost::array<UINT32,2> > commmap; // cache line -> list of tids that previously accesses
 
-boost::array<boost::unordered_map<UINT64, UINT64>, MAXTHREADS+1> pagemap;
-boost::array<boost::unordered_map<UINT64, UINT64>, MAXTHREADS+1> ftmap;
+boost::array<tbb::concurrent_unordered_map<UINT64, UINT64>, MAXTHREADS+1> pagemap;
+boost::array<tbb::concurrent_unordered_map<UINT64, UINT64>, MAXTHREADS+1> ftmap;
 
 map<UINT32, UINT32> pidmap; // pid -> tid
 
@@ -180,8 +177,9 @@ VOID print_comm()
 	int real_tid[MAXTHREADS+1];
 	int i = 0, a, b;
 
-	for (auto it : pidmap)
-		real_tid[it.second] = i++;
+	// for (auto it : pidmap)
+	for (map<UINT32,UINT32>::iterator it=pidmap.begin(); it != pidmap.end(); ++it)
+		real_tid[it->second] = i++;
 
 	cout << fname << endl;
 
@@ -207,8 +205,8 @@ void print_page()
 {
 	int real_tid[MAXTHREADS+1];
 
-	boost::unordered_map<UINT64, boost::array<UINT64, MAXTHREADS+1>> finalmap;
-	boost::unordered_map<UINT64, pair<UINT64, UINT32>> finalft;
+	tbb::concurrent_unordered_map<UINT64, boost::array<UINT64, MAXTHREADS+1> > finalmap;
+	tbb::concurrent_unordered_map<UINT64, pair<UINT64, UINT32> > finalft;
 
 	static long n = 0;
 	ofstream f;
@@ -231,20 +229,22 @@ void print_page()
 
 	// determine which thread accessed each page first
 	for (int tid = 0; tid<num_threads; tid++) {
-		for (auto it : pagemap[tid]) {
-			finalmap[it.first][tid] = pagemap[tid][it.first];
-			if (finalft[it.first].first == 0 || finalft[it.first].first > ftmap[tid][it.first])
-				finalft[it.first] = make_pair(ftmap[tid][it.first], real_tid[tid]);
+		// for (auto it : pagemap[tid]) {
+		for (tbb::concurrent_unordered_map<UINT64,UINT64>::iterator it=pagemap[tid].begin(); it != pagemap[tid].end(); ++it) {
+			finalmap[it->first][tid] = pagemap[tid][it->first];
+			if (finalft[it->first].first == 0 || finalft[it->first].first > ftmap[tid][it->first])
+				finalft[it->first] = make_pair(ftmap[tid][it->first], real_tid[tid]);
 		}
 	}
 
 	// fix stack and print pages to csv
-	for(auto it : finalmap) {
-		UINT64 pageaddr = it.first;
-		f << pageaddr << "," << finalft[it.first].second;
+	// for(auto it : finalmap) {
+	for (tbb::concurrent_unordered_map<UINT64, boost::array<UINT64, MAXTHREADS+1> >::iterator it=finalmap.begin(); it != finalmap.end(); ++it) {
+		UINT64 pageaddr = it->first;
+		f << pageaddr << "," << finalft[it->first].second;
 
 		for (int i=0; i<num_threads; i++)
-			f << "," << it.second[real_tid[i]];
+			f << "," << it->second[real_tid[i]];
 
 		f << "\n";
 	}
