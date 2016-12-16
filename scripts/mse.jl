@@ -11,16 +11,19 @@ function mse(A, B)
 
     nt = size(A)[1]
 
+    # remove diagonal
     for i in 1:nt
         A[i,nt+1-i] = 0
         B[i,nt+1-i] = 0
     end
 
+    # normalize values
     A = A/maximum(A) * 100
     B = B/maximum(B) * 100
 
     mse = mean((A - B).^2)
 end
+
 
 if length(ARGS) != 2
     error("Usage: ", PROGRAM_FILE, " <comm_pattern_A.csv> <comm_pattern_B.csv>")
