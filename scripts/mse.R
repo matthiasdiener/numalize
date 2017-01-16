@@ -7,8 +7,8 @@ if (length(args) != 2)
 mat1 = data.matrix(read.csv(args[1], header=F))
 mat2 = data.matrix(read.csv(args[2], header=F))
 
-mat1 = mat1/max(mat1) * 100
-mat2 = mat2/max(mat2) * 100
+mat1 = mat1/max(mat1,1) * 100
+mat2 = mat2/max(mat2,1) * 100
 
 if(nrow(mat1)!=ncol(mat1) || nrow(mat2)!=ncol(mat2) || nrow(mat1)!=ncol(mat2))
 	stop("Input matrices are not square or do not have same dimensions")
