@@ -77,7 +77,7 @@ for (filename in args) {
 	}
 
 	mat = data.matrix(csv)
-	mat = t(mat[nrow(mat):1,])
+	mat = mat[nrow(mat):1,] # reverse matrix
 
 	private = 0
 	comm = 0

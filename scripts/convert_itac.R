@@ -26,7 +26,7 @@ mat = matrix(0, nt, nt) # create empty matrix (global variable)
 
 ignore = apply(data, 1, extract)
 
-mat = t(mat[nrow(mat):1,]) # reverse matrix
+mat = mat[nrow(mat):1,] # reverse matrix
 
 write.table(mat, file=outfile, sep=",", quote=F, row.names=F, col.names=F)
 cat("Wrote", outfile, "\n")
