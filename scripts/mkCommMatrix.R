@@ -99,8 +99,10 @@ for (filename in args) {
 		every=1
 	else if (nt<=32)
 		every=5
-	else if (nt<=128)
+	else if (nt<=64)
 		every=10
+	else if (nt<=128)
+		every=25
 	else if (nt<=256)
 		every=50
 	else if (nt<1000)
