@@ -29,4 +29,4 @@ ignore = apply(data, 1, extract)
 mat = mat[nrow(mat):1,] # reverse matrix
 
 write.table(mat, file=outfile, sep=",", quote=F, row.names=F, col.names=F)
-cat("Wrote", outfile, "\n")
+cat("Wrote", outfile, "-", nt, "threads", "\n")
