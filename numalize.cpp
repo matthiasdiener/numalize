@@ -202,7 +202,10 @@ VOID print_comm()
 
 void print_page()
 {
-	int real_tid[MAXTHREADS+1];
+	int real_tid[MAXTHREADS+1], i=0;
+
+	for (auto it : pidmap)
+		real_tid[it.second] = i++;
 
 	unordered_map<UINT64, array<UINT64, MAXTHREADS+1>> finalmap;
 	unordered_map<UINT64, pair<UINT64, UINT32>> finalft;
@@ -235,7 +238,7 @@ void print_page()
 		}
 	}
 
-	// fix stack and print pages to csv
+	// print pages to csv
 	for(auto it : finalmap) {
 		UINT64 pageaddr = it.first;
 		f << pageaddr << "," << finalft[it.first].second;
