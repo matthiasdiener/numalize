@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-files = list.files(pattern="\\.page\\.csv$")
+files = list.files(pattern="\\.page\\.csv(\\.xz)?$")
 
 nnodes = 4
 
