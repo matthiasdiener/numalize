@@ -1,15 +1,7 @@
 #include <iostream>
-#include <sstream>
 #include <unordered_map>
-#include <map>
-#include <array>
-#include <cmath>
-#include <cstring>
 #include <fstream>
 #include <unistd.h>
-
-#include <sys/time.h>
-#include <sys/resource.h>
 
 #include "pin.H"
 
@@ -24,12 +16,17 @@ KNOB<bool> DOPAGE(KNOB_MODE_WRITEONCE, "pintool", "p", "0", "enable page usage d
 
 int num_threads = 0;
 
-UINT64 comm_matrix[MAXTHREADS][MAXTHREADS]; // comm matrix
+struct tidl {
+	THREADID first;
+	THREADID second;
+} tidl;
 
-unordered_map<UINT64, array<UINT32,2>> commmap; // cache line -> list of tids that previously accesses
+UINT64 comm_matrix[MAXTHREADS][MAXTHREADS];
 
-array<unordered_map<UINT64, UINT64>, MAXTHREADS+1> pagemap;
-array<unordered_map<UINT64, UINT64>, MAXTHREADS+1> ftmap;
+unordered_map<UINT64, struct tidl> commmap; // cache line -> list of tids that previously accessed it
+
+unordered_map<UINT64, UINT64> pagemap [MAXTHREADS+1];
+unordered_map<UINT64, UINT64> ftmap   [MAXTHREADS+1];
 
 map<UINT32, UINT32> pidmap; // pid -> tid
 
@@ -43,7 +40,6 @@ VOID inc_comm(int a, int b)
 		comm_matrix[a][b-1]++;
 }
 
-
 VOID do_comm(ADDRINT addr, THREADID tid)
 {
 	if (num_threads < 2)
@@ -52,9 +48,8 @@ VOID do_comm(ADDRINT addr, THREADID tid)
 	tid = tid>=2 ? tid-1 : tid;
 	int sh = 1;
 
-	THREADID a = commmap[line][0];
-	THREADID b = commmap[line][1];
-
+	THREADID a = commmap[line].first;
+	THREADID b = commmap[line].second;
 
 	if (a == 0 && b == 0)
 		sh = 0;
@@ -62,15 +57,15 @@ VOID do_comm(ADDRINT addr, THREADID tid)
 		sh = 2;
 
 	switch (sh) {
-		case 0: /* no one accessed line before, store accessing thread in pos 0 */
-			commmap[line][0] = tid+1;
+		case 0: // no one accessed line before, store accessing thread in pos 0
+			commmap[line].first = tid+1;
 			break;
 
-		case 1: /* one previous access => needs to be in pos 0 */
+		case 1: // one previous access => needs to be in pos 0
 			// if (a != tid+1) {
 				inc_comm(tid, a);
-				commmap[line][1] = a;
-				commmap[line][0] = tid+1;
+				commmap[line].first = tid+1;
+				commmap[line].second = a;
 			// }
 			break;
 
@@ -78,14 +73,14 @@ VOID do_comm(ADDRINT addr, THREADID tid)
 			// if (a != tid+1 && b != tid+1) {
 				inc_comm(tid, a);
 				inc_comm(tid, b);
-				commmap[line][1] = a;
-				commmap[line][0] = tid+1;
+				commmap[line].first = tid+1;
+				commmap[line].second = a;
 			// } else if (a == tid+1) {
 			// 	inc_comm(tid, b);
 			// } else if (b == tid+1) {
 			// 	inc_comm(tid, a);
-			// 	commmap[line][1] = a;
-			// 	commmap[line][0] = tid+1;
+			// 	commmap[line].first = tid+1;
+			// 	commmap[line].second = a;
 			// }
 
 			break;
@@ -207,7 +202,7 @@ void print_page()
 	for (auto it : pidmap)
 		real_tid[it.second] = i++;
 
-	unordered_map<UINT64, array<UINT64, MAXTHREADS+1>> finalmap;
+	unordered_map<UINT64, vector<UINT64>> finalmap;
 	unordered_map<UINT64, pair<UINT64, UINT32>> finalft;
 
 	static long n = 0;
@@ -232,6 +227,7 @@ void print_page()
 	// determine which thread accessed each page first
 	for (int tid = 0; tid<num_threads; tid++) {
 		for (auto it : pagemap[tid]) {
+			finalmap[it.first].resize(MAXTHREADS);
 			finalmap[it.first][tid] = pagemap[tid][it.first];
 			if (finalft[it.first].first == 0 || finalft[it.first].first > ftmap[tid][it.first])
 				finalft[it.first] = make_pair(ftmap[tid][it.first], real_tid[tid]);
@@ -316,7 +312,10 @@ int main(int argc, char *argv[])
 
 	if (DOCOMM) {
 		INS_AddInstrumentFunction(trace_memory_comm, 0);
-		commmap.reserve(100*1000*1000);
+		for (int i=0; i<100*1000*1000; i++) {
+			commmap[i].first = 0;
+			commmap[i].second = 0;
+		}
 	}
 
 	IMG_AddInstrumentFunction(binName, 0);

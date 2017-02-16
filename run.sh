@@ -2,11 +2,14 @@
 
 set -o errexit -o nounset -o pipefail
 
-# directory of this script
+# Directory of this script
 DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# recompile pintool if necessary
-(cd $DIR; make -q || make)
+# Get root of Pin installation
+PIN_ROOT=$(grep override $DIR/Makefile | awk '{print $4}')
+
+# Recompile pintool if necessary
+(cd $DIR; make -q >/dev/null 2>/dev/null || make)
 
 # program to trace and its arguments
 PROGARGS=$(echo ${@} | sed s,.*--\ ,,)
@@ -15,7 +18,7 @@ PROG=$(echo $PROGARGS | { read first rest; echo $(basename $first) | sed s,\\s.*
 # Run pin
 echo "### running pin: $PROGARGS"
 
-time -p pin -xyzzy -enable_vsm 0 -t $DIR/obj-*/*.so ${@}
+time -p $PIN_ROOT/pin -t $DIR/obj-*/numalize.so ${@}
 
 if [[ $1 == "-p" ]]; then
 	# sort output page csv's according to page address
