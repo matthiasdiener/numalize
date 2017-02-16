@@ -1,7 +1,11 @@
 #include <iostream>
 #include <unordered_map>
+#include <map>
 #include <fstream>
 #include <unistd.h>
+
+#include <cstring>
+#include <cmath>
 
 #include "pin.H"
 
