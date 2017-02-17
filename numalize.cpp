@@ -20,22 +20,35 @@ KNOB<bool> DOPAGE(KNOB_MODE_WRITEONCE, "pintool", "p", "0", "enable page usage d
 
 int num_threads = 0;
 
-struct tidl {
-	THREADID first;
-	THREADID second;
-} tidl;
-
+// communication matrix
 UINT64 comm_matrix[MAXTHREADS][MAXTHREADS];
 
-unordered_map<UINT64, struct tidl> commmap; // cache line -> list of tids that previously accessed it
+struct TIDlist {
+	THREADID first;
+	THREADID second;
+} TIDlist;
 
+// mapping of cache line to a list of TIDs that previously accessed it
+unordered_map<UINT64, struct TIDlist> commmap;
+
+// mapping of page to number of accesses to it, indexed by TID
 unordered_map<UINT64, UINT64> pagemap [MAXTHREADS+1];
+
+// mapping of page to number of accesses to it, indexed by TID
 unordered_map<UINT64, UINT64> ftmap   [MAXTHREADS+1];
 
-map<UINT32, UINT32> pidmap; // pid -> tid
+// Mapping of PID to TID (for numbering threads correctly)
+map<UINT32, UINT32> pidmap;
 
+// Binary name
 string img_name;
 
+
+static inline
+THREADID real_tid(THREADID tid)
+{
+	return tid >= 2 ? tid-1 : tid;
+}
 
 static inline
 VOID inc_comm(int a, int b)
@@ -49,7 +62,7 @@ VOID do_comm(ADDRINT addr, THREADID tid)
 	if (num_threads < 2)
 		return;
 	UINT64 line = addr >> COMMSIZE;
-	tid = tid>=2 ? tid-1 : tid;
+	tid = real_tid(tid);
 	int sh = 1;
 
 	THREADID a = commmap[line].first;
@@ -115,7 +128,7 @@ UINT64 get_tsc()
 VOID do_numa(ADDRINT addr, THREADID tid)
 {
 	UINT64 page = addr >> MYPAGESIZE;
-	tid = tid>=2 ? tid-1 : tid;
+	tid = real_tid(tid);
 
 	if (pagemap[tid][page]++ == 0)
 		ftmap[tid][page] = get_tsc();
