@@ -10,6 +10,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
 #include <cstring>
 #include <cmath>
 
@@ -35,16 +38,19 @@ int num_threads = 0;
 ofstream fstructStream;
 
 struct alloc {
-    string loc;
-    string name;
-    ADDRINT addr;
-    ADDRINT size;
-    THREADID tid;
+	string loc; // Location in code where allocated
+	string name; // Name of data structure
+	ADDRINT addr; // Starting page address
+	ADDRINT size; // Size
+	THREADID tid; // Thread that performed allocation
 };
 
 
 vector <struct alloc> allocations;
 struct alloc tmp_allocs[MAXTHREADS+1];
+
+// Stack size in pages
+UINT64 stack_size = 1;
 
 // communication matrix
 UINT64 comm_matrix[MAXTHREADS][MAXTHREADS];
@@ -61,7 +67,7 @@ unordered_map<UINT64, struct TIDlist> commmap;
 unordered_map<UINT64, UINT64> pagemap [MAXTHREADS+1];
 
 // mapping of page to time stamp of first touch, indexed by TID
-unordered_map<UINT64, UINT64> ftmap   [MAXTHREADS+1];
+unordered_map<UINT64, pair<UINT64, string>> ftmap   [MAXTHREADS+1];
 
 // Mapping of PID to TID (for numbering threads correctly)
 map<UINT32, UINT32> pidmap;
@@ -119,11 +125,11 @@ VOID do_comm(ADDRINT addr, THREADID tid)
 				commmap[line].first = tid+1;
 				commmap[line].second = a;
 			// } else if (a == tid+1) {
-			// 	inc_comm(tid, b);
+			//  inc_comm(tid, b);
 			// } else if (b == tid+1) {
-			// 	inc_comm(tid, a);
-			// 	commmap[line].first = tid+1;
-			// 	commmap[line].second = a;
+			//  inc_comm(tid, a);
+			//  commmap[line].first = tid+1;
+			//  commmap[line].second = a;
 			// }
 
 			break;
@@ -153,47 +159,22 @@ UINT64 get_tsc()
 
 string find_location (const CONTEXT *ctxt)
 {
-	// string fname;
-	// int col, ln;
 	string res = "";
+	void* buf[128];
 
-    void* buf[128];
-    PIN_LockClient();
-    int nptrs = PIN_Backtrace(ctxt, buf, sizeof(buf)/sizeof(buf[0]));
-    // PIN_GetSourceLocation((ADDRINT)buf[nptrs-3], &col, &ln, &fname);
-    char** bt = backtrace_symbols(buf, nptrs);
-    for (int i = 0; i < nptrs; i++) {
-    	res+=bt[i] + string("\n");
-    	// PIN_GetSourceLocation((ADDRINT)buf[i]-1, &col, &ln, &fname);
-    	// ifstream fstr(fname.c_str());
-     //    string line;
+	PIN_LockClient();
 
-     //    if (fstr) {
-     //    	for(int i=0; i< ln; ++i)
-     //    		getline(fstr, line);
-     //    	fstr.close();
-     //    	cout << line << endl;
-     //    } else {
-     //    	cout << "ERROR " << endl;
-     //    }
+	int nptrs = PIN_Backtrace(ctxt, buf, sizeof(buf)/sizeof(buf[0]));
+	char** bt = backtrace_symbols(buf, nptrs);
 
-    	// if (!fname.empty()) {
-    	// if (!fname.empty() && fname.substr(0,5) == "/home") {
-    	// 	// cout << fname << ln << endl;
-    	// 	// cout << bt[i] << endl;
-    	// 	// if (!fname.empty()) {
-    	// 		// myloc = i;
-    	// 	break;
-    	// }
-    }
-    // free(bt);
-    // cout << endl;
-    // PIN_GetSourceLocation((ADDRINT)buf[myloc], &col, &ln, &fname);
-    PIN_UnlockClient();
+	for (int i = 0; i < nptrs; i++) {
+		res += bt[i];
+		res += " ";
+	}
 
-    // fname += ":"+decstr(ln);
+	PIN_UnlockClient();
 
-    return res;
+	return res;
 }
 
 
@@ -203,8 +184,18 @@ VOID do_numa(const CONTEXT *ctxt, ADDRINT addr, THREADID tid)
 	tid = real_tid(tid);
 
 	if (pagemap[tid][page]++ == 0) {
-		ftmap[tid][page] = get_tsc();
+		// ftmap[tid][page] = make_pair(get_tsc(), find_location(ctxt));
 		// string tmp = find_location(ctxt);
+		string fname;
+		int col, line;
+		PIN_LockClient();
+		PIN_GetSourceLocation(PIN_GetContextReg(ctxt,REG_INST_PTR), &col, &line, &fname);
+		PIN_UnlockClient();
+		if (fname == "")
+			fname = "unknown.loc";
+		else
+			fname += ":" + decstr(line);
+		ftmap[tid][page] = make_pair(get_tsc(), fname);
 		// cout << tmp << endl;
 	}
 }
@@ -245,7 +236,17 @@ VOID ThreadStart(THREADID tid, CONTEXT *ctxt, INT32 flags, VOID *v)
 
 	int pid = PIN_GetTid();
 	pidmap[pid] = tid ? tid - 1 : tid;
+
+	struct alloc stacktmp;
+	stacktmp.tid = tid;
+	stacktmp.addr = (PIN_GetContextReg(ctxt, REG_STACK_PTR) >> MYPAGESIZE) - stack_size;
+	stacktmp.loc = "None";
+	stacktmp.name = "Stack";
+	stacktmp.size = stack_size << MYPAGESIZE;
+	allocations.push_back(stacktmp);
 }
+
+
 
 
 VOID print_comm()
@@ -287,9 +288,16 @@ VOID print_comm()
 }
 
 
-bool compare_struct(const struct alloc &a, const struct alloc &b)
+struct alloc find_structure(ADDRINT addr)
 {
-    return a.addr < b.addr;
+	for (auto it : allocations) {
+		if (addr >= it.addr && addr <= it.addr + (it.size >> MYPAGESIZE))
+			return it;
+	}
+	struct alloc tmp;
+	tmp.name = "unknown.name";
+	tmp.loc = "unknown.loc";
+	return tmp;
 }
 
 
@@ -300,29 +308,29 @@ void print_page()
 	for (auto it : pidmap)
 		real_tid[it.second] = i++;
 
-	sort(allocations.begin(), allocations.end(), compare_struct);
+	sort(allocations.begin(), allocations.end(), [](struct alloc const& a, struct alloc const& b) {return a.addr < b.addr;} );
 
 	for (auto it : allocations) {
-		cout << real_tid[it.tid] << " " << it.addr << " " << it.size << " " << it.loc << endl << endl;
+		cout << real_tid[it.tid] << " " << it.addr << " " << it.size << endl;
 	}
 
 	unordered_map<UINT64, vector<UINT64>> finalmap;
 	unordered_map<UINT64, pair<UINT64, UINT32>> finalft;
 
-	static long n = 0;
-	ofstream f;
-	char fname[255];
+	string fname = img_name + ".";
 
-	if (INTERVAL)
-		sprintf(fname, "%s.%06ld.page.csv", img_name.c_str(), n++);
+	if (INTERVAL) {
+		static long n = 0;
+		fname += StringDec(n++, 6, '0') + ".page.csv";
+	}
 	else
-		sprintf(fname, "%s.full.page.csv", img_name.c_str());
+		fname += "full.page.csv";
 
 	cout << ">>> " << fname << endl;
 
-	f.open(fname);
+	ofstream f(fname.c_str());
 
-	f << "addr,alloc.thread,alloc.location,firsttouch.thread,firsttouch.location";
+	f << "page.address,alloc.thread,alloc.location,firsttouch.thread,firsttouch.location,structure.name";
 	for (int i = 0; i<num_threads; i++)
 		f << ",T" << i;
 	f << "\n";
@@ -333,16 +341,26 @@ void print_page()
 		for (auto it : pagemap[tid]) {
 			finalmap[it.first].resize(MAXTHREADS);
 			finalmap[it.first][tid] = pagemap[tid][it.first];
-			if (finalft[it.first].first == 0 || finalft[it.first].first > ftmap[tid][it.first])
-				finalft[it.first] = make_pair(ftmap[tid][it.first], real_tid[tid]);
+			if (finalft[it.first].first == 0 || finalft[it.first].first > ftmap[tid][it.first].first)
+				finalft[it.first] = make_pair(ftmap[tid][it.first].first, tid);
 		}
 	}
 
 	// write pages to csv
 	for(auto it : finalmap) {
 		UINT64 pageaddr = it.first;
+		struct alloc tmp = find_structure(pageaddr);
 
-		f << pageaddr << "," << finalft[pageaddr].second;
+		f << pageaddr;
+		f << "," << real_tid[tmp.tid];
+		f << "," << tmp.loc;
+		f << "," << real_tid[finalft[pageaddr].second];
+		f << "," << ftmap[finalft[pageaddr].second][pageaddr].second;
+
+		if (tmp.name == "Stack")
+			f << "," << "Stack.T" << real_tid[tmp.tid];
+		else
+			f << "," << tmp.name;
 
 		for (int i=0; i<num_threads; i++)
 			f << "," << it.second[real_tid[i]];
@@ -369,7 +387,7 @@ VOID mythread(VOID * arg)
 		if (DOPAGE) {
 			print_page();
 			// for(auto it : pagemap)
-			// 	fill(begin(it.second), end(it.second), 0);
+			//  fill(begin(it.second), end(it.second), 0);
 		}
 	}
 }
@@ -421,8 +439,8 @@ VOID mythread(VOID * arg)
 // string get_struct_name(string str, int ln, string fname, int hops)
 // {
 //     if( str.find(string("}"))!=string::npos && hops==0) {
-//     	cout << "HERE" << endl;
-//  		backtrace();
+//      cout << "HERE" << endl;
+//          backtrace();
 //         return get_complex_struct_name(ln, fname); //Return Ip is not malloc line
 //     }
 //     // Remove everything after first '='
@@ -451,51 +469,58 @@ VOID PREMALLOC(ADDRINT retip, THREADID tid, const CONTEXT *ctxt, ADDRINT size)
 {
 	tid = real_tid(tid);
 
-    if (size < 1024*1024)
-    	return;
+	if (size < 1024*1024)
+		return;
 
-    string loc = find_location(ctxt);
+	string loc = find_location(ctxt);
 
-    if (tmp_allocs[tid].addr == 0) {
-    	tmp_allocs[tid].addr = 12341234;
-    	tmp_allocs[tid].tid  = real_tid(tid);
-    	tmp_allocs[tid].size = size;
-    	tmp_allocs[tid].loc  = loc;
-    	tmp_allocs[tid].name = "";
-    } else {
-    	cerr << "BUGBUGBUGBUG PREMALLOC " << tid << endl;
-    }
+	if (tmp_allocs[tid].addr == 0) {
+		tmp_allocs[tid].addr = 12341234;
+		tmp_allocs[tid].tid  = real_tid(tid);
+		tmp_allocs[tid].size = size;
+		tmp_allocs[tid].loc  = loc;
+		tmp_allocs[tid].name = "";
+	} else {
+		cerr << "BUGBUGBUGBUG PREMALLOC " << tid << endl;
+	}
 }
 
 VOID POSTMALLOC(ADDRINT ret, THREADID tid)
 {
 	if (tmp_allocs[tid].addr == 12341234) {
-		tmp_allocs[tid].addr = ret;
+		tmp_allocs[tid].addr = ret >> MYPAGESIZE;
 		allocations.push_back(tmp_allocs[tid]);
 
-   		cout << "::: ALLOC: " << tid << " " << tmp_allocs[tid].addr << " " << tmp_allocs[tid].size << " " << endl;
+		cout << "::: ALLOC: " << tid << " " << tmp_allocs[tid].addr << " " << tmp_allocs[tid].size << " " << endl;
 		tmp_allocs[tid].addr = 0;
 	} else {
-    	// cerr << "BUGBUGBUGBUG POSTMALLOC " << tid << endl;
-    }
+		// cerr << "BUGBUGBUGBUG POSTMALLOC " << tid << endl;
+	}
 }
 
 
 VOID InitMain(IMG img, VOID *v)
 {
-    if (IMG_IsMainExecutable(img))
-        img_name = basename(IMG_Name(img).c_str());
+	if (IMG_IsMainExecutable(img))
+		img_name = basename(IMG_Name(img).c_str());
 
-    RTN mallocRtn = RTN_FindByName(img, "malloc");
-    if (RTN_Valid(mallocRtn))
-    {
-        RTN_Open(mallocRtn);
+	struct rlimit sl;
+	int ret = getrlimit(RLIMIT_STACK, &sl);
+	if (ret == -1)
+		cerr << "Error getting stack size. errno: " << errno << endl;
+	else
+		stack_size = sl.rlim_cur >> MYPAGESIZE;
 
-        RTN_InsertCall(mallocRtn, IPOINT_BEFORE, (AFUNPTR)PREMALLOC,                IARG_RETURN_IP, IARG_THREAD_ID, IARG_CONST_CONTEXT,                IARG_FUNCARG_ENTRYPOINT_VALUE, 0,  IARG_END);
-        RTN_InsertCall(mallocRtn, IPOINT_AFTER, (AFUNPTR)POSTMALLOC,                IARG_FUNCRET_EXITPOINT_VALUE, IARG_THREAD_ID, IARG_END);
+	RTN mallocRtn = RTN_FindByName(img, "malloc");
+	if (RTN_Valid(mallocRtn))
+	{
+		RTN_Open(mallocRtn);
 
-        RTN_Close(mallocRtn);
-    }
+		RTN_InsertCall(mallocRtn, IPOINT_BEFORE, (AFUNPTR)PREMALLOC,                IARG_RETURN_IP, IARG_THREAD_ID, IARG_CONST_CONTEXT,                IARG_FUNCARG_ENTRYPOINT_VALUE, 0,  IARG_END);
+		RTN_InsertCall(mallocRtn, IPOINT_AFTER, (AFUNPTR)POSTMALLOC,                IARG_FUNCRET_EXITPOINT_VALUE, IARG_THREAD_ID, IARG_END);
+
+		RTN_Close(mallocRtn);
+	}
 }
 
 
@@ -530,8 +555,8 @@ int main(int argc, char *argv[])
 
 	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << MYPAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
 
-	// if (DOPAGE)
-	// 	INS_AddInstrumentFunction(trace_memory_page, 0);
+	if (DOPAGE)
+		INS_AddInstrumentFunction(trace_memory_page, 0);
 
 	if (DOCOMM) {
 		INS_AddInstrumentFunction(trace_memory_comm, 0);
@@ -556,15 +581,15 @@ int main(int argc, char *argv[])
 //     Elf *elf;                       /* Our Elf pointer for libelf */
 //     Elf_Scn *scn=NULL;                   /* Section Descriptor */
 //     Elf_Data *edata=NULL;                /* Data Descriptor */
-//     GElf_Sym sym;			/* Symbol */
+//     GElf_Sym sym;            /* Symbol */
 //     GElf_Shdr shdr;                 /* Section Header */
 
 
 
 
-//     int fd; 		// File Descriptor
-//     char *base_ptr;		// ptr to our object in memory
-//     struct stat elf_stats;	// fstat struct
+//     int fd;      // File Descriptor
+//     char *base_ptr;      // ptr to our object in memory
+//     struct stat elf_stats;   // fstat struct
 //     cout << "Retrieving data structures from file "<< file << endl;
 
 //     if((fd = open(file, O_RDONLY)) == ERR)
@@ -601,7 +626,7 @@ int main(int argc, char *argv[])
 //         cerr << "WARNING Elf Library is out of date!" << endl;
 //     }
 
-//     elf = elf_begin(fd, ELF_C_READ, NULL);	// Initialize 'elf' pointer to our file descriptor
+//     elf = elf_begin(fd, ELF_C_READ, NULL);   // Initialize 'elf' pointer to our file descriptor
 
 //     elf = elf_begin(fd, ELF_C_READ, NULL);
 
@@ -628,7 +653,7 @@ int main(int argc, char *argv[])
 //                 if(ELF32_ST_TYPE(sym.st_info)==STT_OBJECT &&
 //                         sym.st_size >= 256*exp2(MYPAGESIZE))
 //                 {
-//                 	cout << "  " << elf_strptr(elf, shdr.sh_link, sym.st_name) << endl;
+//                  cout << "  " << elf_strptr(elf, shdr.sh_link, sym.st_name) << endl;
 //                     fstructStream << elf_strptr(elf, shdr.sh_link, sym.st_name) <<
 //                         "," << sym.st_value << "," << sym.st_size << endl;
 //                 }
