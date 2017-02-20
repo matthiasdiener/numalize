@@ -238,15 +238,13 @@ VOID ThreadStart(THREADID tid, CONTEXT *ctxt, INT32 flags, VOID *v)
 	pidmap[pid] = tid ? tid - 1 : tid;
 
 	struct alloc stacktmp;
-	stacktmp.tid = tid;
+	stacktmp.tid = real_tid(tid);
 	stacktmp.addr = (PIN_GetContextReg(ctxt, REG_STACK_PTR) >> MYPAGESIZE) - stack_size;
-	stacktmp.loc = "None";
+	stacktmp.loc = "unknown.loc";
 	stacktmp.name = "Stack";
 	stacktmp.size = stack_size << MYPAGESIZE;
 	allocations.push_back(stacktmp);
 }
-
-
 
 
 VOID print_comm()
@@ -303,16 +301,15 @@ struct alloc find_structure(ADDRINT addr)
 
 void print_page()
 {
-	int real_tid[MAXTHREADS+1], i=0;
+	int final_tid[MAXTHREADS+1], i=0;
 
 	for (auto it : pidmap)
-		real_tid[it.second] = i++;
+		final_tid[it.second] = i++;
 
 	sort(allocations.begin(), allocations.end(), [](struct alloc const& a, struct alloc const& b) {return a.addr < b.addr;} );
 
-	for (auto it : allocations) {
-		cout << real_tid[it.tid] << " " << it.addr << " " << it.size << endl;
-	}
+	for (auto it : allocations)
+		cout << final_tid[it.tid] << " " << it.addr << " " << it.size << " " << it.name << endl;
 
 	unordered_map<UINT64, vector<UINT64>> finalmap;
 	unordered_map<UINT64, pair<UINT64, UINT32>> finalft;
@@ -352,18 +349,20 @@ void print_page()
 		struct alloc tmp = find_structure(pageaddr);
 
 		f << pageaddr;
-		f << "," << real_tid[tmp.tid];
+		f << "," << final_tid[tmp.tid];
 		f << "," << tmp.loc;
-		f << "," << real_tid[finalft[pageaddr].second];
+		f << "," << final_tid[finalft[pageaddr].second];
 		f << "," << ftmap[finalft[pageaddr].second][pageaddr].second;
 
 		if (tmp.name == "Stack")
-			f << "," << "Stack.T" << real_tid[tmp.tid];
-		else
-			f << "," << tmp.name;
+			tmp.name = "Stack.T" + decstr(final_tid[tmp.tid]);
+		if (tmp.name == "")
+			tmp.name = "unknown.name";
+
+		f << "," << tmp.name;
 
 		for (int i=0; i<num_threads; i++)
-			f << "," << it.second[real_tid[i]];
+			f << "," << it.second[final_tid[i]];
 
 		f << "\n";
 	}
@@ -532,7 +531,7 @@ VOID Fini(INT32 code, VOID *v)
 	if (DOPAGE)
 		print_page();
 
-	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << MYPAGESIZE << " INTERVAL: " << INTERVAL << endl << endl;
+	cout << endl << "MAXTHREADS: " << MAXTHREADS << " COMMSIZE: " << COMMSIZE << " PAGESIZE: " << MYPAGESIZE << " INTERVAL: " << INTERVAL << " NUM_THREADS: " << num_threads << endl << endl;
 }
 
 
