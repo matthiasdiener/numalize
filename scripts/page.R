@@ -60,6 +60,12 @@ for (filename in files) {
 
 	res = c(bench)
 
+	data = data[,!colnames(data) %in% c("alloc.thread", "alloc.location", "firsttouch.location", "structure.name")]
+
+	colnames(data)[1] = "addr"
+	colnames(data)[2] = "firstacc"
+	print(head(data))
+
 	threads = grep("T\\d+", names(data))
 	nthreads = length(threads)
 	tpn = nthreads / nnodes
