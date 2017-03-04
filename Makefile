@@ -5,14 +5,15 @@
 
 # Do not edit below this line
 
-
 # Try to detect Pin installation directory in user's /home and /opt
 ifeq ($(PIN_ROOT), )
-  override PIN_ROOT = $(shell dirname $$(find ~ /opt -type f -name pin -path '*/*pin' -print -quit))
-endif
-
-ifeq ($(PIN_ROOT), )
-  $(error Could not detect Pin installation directory, please specify PIN_ROOT manually in the Makefile)
+  override PIN_ROOT = $(shell cat .pin_root 2>/dev/null)
+  ifeq ($(PIN_ROOT), )
+    override PIN_ROOT = $(shell dirname $$(find ~ /opt -type f -name pin -path '*/*pin' -print -quit))
+  endif
+  ifeq ($(PIN_ROOT), )
+    $(error Could not detect Pin installation directory, please specify PIN_ROOT manually in the Makefile)
+  endif
 endif
 
 ifeq ($(MAKECMDGOALS), )
@@ -30,6 +31,6 @@ include $(CONFIG_ROOT)/makefile.config
 TOOL_CXXFLAGS += -Wall -g -std=c++0x -Wno-error -Wextra -Wno-unused-parameter -pedantic
 # TOOL_LDFLAGS += -Wl,-rpath,$PIN_ROOT/intel64/runtime
 
-TEST_TOOL_ROOTS := numalize
+TOOL_ROOTS := numalize
 
 include $(TOOLS_ROOT)/Config/makefile.default.rules
