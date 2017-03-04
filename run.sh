@@ -5,8 +5,8 @@ set -o errexit -o nounset -o pipefail
 # Directory of this script
 DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Get root of Pin installation
-PIN_ROOT=$(grep override $DIR/Makefile | awk '{print $4}')
+# Get root of Pin installation (determined from Makefile)
+PIN_ROOT=$(cat $DIR/.pin_root)
 
 # Recompile pintool if necessary
 (cd $DIR; make -q >/dev/null 2>/dev/null || make)

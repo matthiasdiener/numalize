@@ -1,8 +1,24 @@
 # PIN_ROOT must point to the Pin kit root.
 
-override PIN_ROOT = /opt/pin
+# Specify Pin path manually:
+# override PIN_ROOT = /path/to/pin
 
 # Do not edit below this line
+
+
+# Try to detect Pin installation directory in user's /home and /opt
+ifeq ($(PIN_ROOT), )
+  override PIN_ROOT = $(shell dirname $$(find ~ /opt -type f -name pin -path '*/*pin' -print -quit))
+endif
+
+ifeq ($(PIN_ROOT), )
+  $(error Could not detect Pin installation directory, please specify PIN_ROOT manually in the Makefile)
+endif
+
+ifeq ($(MAKECMDGOALS), )
+  $(info PIN_ROOT is ${PIN_ROOT})
+  $(shell echo ${PIN_ROOT} > .pin_root)
+endif
 
 ifdef PIN_ROOT
 CONFIG_ROOT := $(PIN_ROOT)/source/tools/Config
