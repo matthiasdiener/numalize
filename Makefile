@@ -28,8 +28,9 @@ CONFIG_ROOT := ../Config
 endif
 include $(CONFIG_ROOT)/makefile.config
 
-TOOL_CXXFLAGS += -Wall -g -std=c++0x -Wno-error -Wextra -Wno-unused-parameter -pedantic
-# TOOL_LDFLAGS += -Wl,-rpath,$PIN_ROOT/intel64/runtime
+TOOL_CXXFLAGS += -Wall -g -std=c++0x -Wno-error -Wextra -Wno-unused-parameter -pedantic -lelf
+# TOOL_LIBS += -lelf
+TOOL_LIBS += /opt/pin-2.14-67254-gcc.4.4.7-linux/intel64/lib-ext/libelf.a
 
 TOOL_ROOTS := numalize
 
