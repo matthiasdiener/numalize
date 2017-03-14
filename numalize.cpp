@@ -41,8 +41,8 @@ ofstream fstructStream;
 struct alloc {
 	string loc; // Location in code where allocated
 	string name; // Name of data structure
-	ADDRINT addr; // Starting page address
-	ADDRINT size; // Size
+	ADDRINT addr; // Starting page address (shifted to page size)
+	ADDRINT size; // Size in bytes
 	THREADID tid; // Thread that performed allocation
 };
 
@@ -158,7 +158,19 @@ UINT64 get_tsc()
 	#endif
 }
 
-string find_location (const CONTEXT *ctxt)
+bool line_is_alloc(const string &line)
+{
+	if (line.find(".reserve")!=string::npos ||
+		line.find(".resize")!=string::npos ||
+		line.find("new")!=string::npos ||
+		line.find("malloc")!=string::npos ||
+		line.find("calloc")!=string::npos ||
+		0)
+		return true;
+	return false;
+}
+
+string find_location(const CONTEXT *ctxt)
 {
 	string res = "";
 	void* buf[128];
@@ -168,13 +180,37 @@ string find_location (const CONTEXT *ctxt)
 	int nptrs = PIN_Backtrace(ctxt, buf, sizeof(buf)/sizeof(buf[0]));
 	char** bt = backtrace_symbols(buf, nptrs);
 
-	for (int i = 0; i < nptrs; i++) {
+
+	for (int i = nptrs-1; i >= 0; i--) {
 		res += bt[i];
 		res += " ";
+
+		string line=bt[i];
+		size_t start = line.find("(");
+		if (start!=string::npos && line.substr(start+1, 4) != "/usr") {
+			size_t end = line.find(":");
+			string file = line.substr(start+1,end-start-1);
+			size_t endf = line.find(")");
+			int linenum = Uint64FromString(line.substr(end+1, endf-end-1));
+
+			ifstream fstr(file.c_str());
+			string l;
+	        for(int i=0; i< linenum; ++i)
+	            getline(fstr, l);
+
+	        if (line_is_alloc(l)) {
+		        cout << l << endl;
+		        PIN_UnlockClient();
+		        return line.substr(start+1, endf-start-1);
+	        }
+	        fstr.close();
+		}
+
+
+
 	}
 
 	PIN_UnlockClient();
-	// cout << res << endl;
 	return res;
 }
 
@@ -184,9 +220,8 @@ VOID do_numa(const CONTEXT *ctxt, ADDRINT addr, THREADID tid)
 	UINT64 page = addr >> MYPAGESIZE;
 	tid = real_tid(tid);
 
-	if (pagemap[tid][page]++ == 0) {
-		// ftmap[tid][page] = make_pair(get_tsc(), find_location(ctxt));
-		// string tmp = find_location(ctxt);
+	if (pagemap[tid][page]++ == 0) { //first touch
+		UINT64 tsc = get_tsc();
 		string fname;
 		int col, line;
 		PIN_LockClient();
@@ -196,8 +231,7 @@ VOID do_numa(const CONTEXT *ctxt, ADDRINT addr, THREADID tid)
 			fname = "unknown.loc";
 		else
 			fname += ":" + decstr(line);
-		ftmap[tid][page] = make_pair(get_tsc(), fname);
-		// cout << tmp << endl;
+		ftmap[tid][page] = make_pair(tsc, fname);
 	}
 }
 
@@ -497,7 +531,7 @@ VOID POSTMALLOC(ADDRINT ret, THREADID tid)
 	}
 }
 
-int getStructs(const char *name);
+void getStructs(const char *name);
 
 
 VOID InitMain(IMG img, VOID *v)
@@ -577,91 +611,38 @@ int main(int argc, char *argv[])
 }
 
 
-#define ERR -1
-
-int getStructs(const char* file)
+void getStructs(const char* file)
 {
-    Elf *elf;                       /* Our Elf pointer for libelf */
-    Elf_Scn *scn=NULL;                   /* Section Descriptor */
-    Elf_Data *edata=NULL;                /* Data Descriptor */
-              /* Symbol */
-    Elf64_Shdr *shdr;                 /* Section Header */
+	char cmd[1024];
+	sprintf(cmd, "readelf -s %s | grep OBJECT | awk '{print strtonum(\"0x\" $2) \" \" strtonum($3) \" \" $8}'", file);
+	FILE *p = popen(cmd, "r");
+	cout << file << " static variables:" << endl;
 
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
 
-    int fd;      // File Descriptor
-    char *base_ptr;      // ptr to our object in memory
-    struct stat elf_stats;   // fstat struct
-    cout << "Retrieving data structures from file "<< file << endl;
+	UINT64 addr, size;
+	char name[1024];
 
-    if((fd = open(file, O_RDONLY)) == ERR)
-    {
-        cerr << "couldnt open" << file << endl;
-        return ERR;
-    }
+	while ((linelen = getline(&line, &linecap, p)) > 0) {
+		fscanf(p, "%lu %lu %s", &addr, &size, name);
 
-    if((fstat(fd, &elf_stats)))
-    {
-        cerr << "could not fstat" << file << endl;
-        close(fd);
-        return ERR;
-    }
+		if (size < exp2(MYPAGESIZE))
+			continue;
 
-    if((base_ptr = (char *) malloc(elf_stats.st_size)) == NULL)
-    {
-        cerr << "could not malloc" << endl;
-        close(fd);
-        return ERR;
-    }
+		struct alloc tmp;
 
-    if((read(fd, base_ptr, elf_stats.st_size)) < elf_stats.st_size)
-    {
-        cerr << "could not read" << file << endl;
-        free(base_ptr);
-        close(fd);
-        return ERR;
-    }
+		tmp.loc = "unknown.loc";
+		tmp.name = PIN_UndecorateSymbolName(name, UNDECORATION_COMPLETE);
+		tmp.addr = addr >> MYPAGESIZE;
+		tmp.size = size;
+		tmp.tid = 0;
 
-    /* Check libelf version first */
-    if(elf_version(EV_CURRENT) == EV_NONE)
-    {
-        cerr << "WARNING Elf Library is out of date!" << endl;
-    }
+		allocations.push_back(tmp);
 
-    elf = elf_begin(fd, ELF_C_READ, NULL);   // Initialize 'elf' pointer to our file descriptor
-
-    elf = elf_begin(fd, ELF_C_READ, NULL);
-
-    int symbol_count;
-    int i;
-
-    while((scn = elf_nextscn(elf, scn)) != NULL)
-    {
-        shdr = elf64_getshdr(scn);
-        // Get the symbol table
-        if(shdr->sh_type == SHT_SYMTAB)
-        {
-            // edata points to our symbol table
-            edata = elf_getdata(scn, edata);
-            // how many symbols are there? this number comes from the size of
-            // the section divided by the entry size
-            symbol_count = shdr->sh_size / shdr->sh_entsize;
-            // loop through to grab all symbols
-            for(i = 0; i < symbol_count; i++)
-            {
-                // libelf grabs the symbol data using gelf_getsym()
-                // elf64_getsym(edata, i, &sym);
-                Elf64_Sym * sym = &((Elf64_Sym *)edata->d_buf)[i];
-                // Keep only objects big enough to be data structures
-                if(ELF32_ST_TYPE(sym->st_info)==STT_OBJECT &&
-                        sym->st_size >= 256*exp2(MYPAGESIZE))
-                {
-                 cout << "  " << elf_strptr(elf, shdr->sh_link, sym->st_name) << endl;
-                    fstructStream << elf_strptr(elf, shdr->sh_link, sym->st_name) <<
-                        "," << sym->st_value << "," << sym->st_size << endl;
-                }
-            }
-        }
-    }
-    return 0;
+		cout << "  " << addr << " " << size << " " << PIN_UndecorateSymbolName(name, UNDECORATION_COMPLETE) << endl;
+	}
+	pclose(p);
 }
 

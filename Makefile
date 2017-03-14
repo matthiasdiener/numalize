@@ -17,7 +17,9 @@ ifeq ($(PIN_ROOT), )
 endif
 
 ifeq ($(MAKECMDGOALS), )
+  $(info =======================================)
   $(info PIN_ROOT is ${PIN_ROOT})
+  $(info =======================================)
   $(shell echo ${PIN_ROOT} > .pin_root)
 endif
 
