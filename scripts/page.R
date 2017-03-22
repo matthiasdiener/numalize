@@ -60,11 +60,11 @@ for (filename in files) {
 
 	res = c(bench)
 
-	data = data[,!colnames(data) %in% c("alloc.thread", "alloc.location", "firsttouch.location", "structure.name")]
+	# remove unused columns
+	data = data[,!colnames(data) %in% c("nr", "alloc.thread", "alloc.location", "firsttouch.location", "structure.name")]
 
 	colnames(data)[1] = "addr"
 	colnames(data)[2] = "firstacc"
-	print(head(data))
 
 	threads = grep("T\\d+", names(data))
 	nthreads = length(threads)
@@ -145,7 +145,7 @@ for (filename in files) {
 	#### Exclusivity
 	excl = sum(data$max)/sum(data$sum)*100
 
-	cat("\nApplication exclusivity (Excl_App):\n\t", excl, "%\n")
+	cat("\nApplication exclusivity (Excl_App): ", excl, "%\n")
 	res = c(res, excl)
 
 	# for larger pages:
