@@ -153,6 +153,17 @@ UINT64 get_tsc()
 		UINT64 r;
 		__asm__ __volatile__ ("mov %0=ar.itc" : "=r" (r) :: "memory");
 		return r;
+	#elif defined(__powerpc__)
+		UINT64 hi, lo, tmp;
+		__asm__ volatile(
+			"0:\n"
+			"mftbu   %0 \n"
+			"mftb    %1 \n"
+			"mftbu   %2 \n"
+			"cmpw    %2,%0 \n"
+			"bne     0b \n"
+			: "=r"(hi),"=r"(lo),"=r"(tmp) );
+		return ((UINT64)lo) | (((UINT64)hi) << 32);
 	#else
 		#error "architecture not supported"
 	#endif
