@@ -3,7 +3,9 @@
 # Specify Pin path manually:
 # override PIN_ROOT = /path/to/pin
 
-# Do not edit below this line
+###################################
+### Do not edit below this line ###
+###################################
 
 # Try to detect Pin installation directory in user's /home and /opt
 ifeq ($(PIN_ROOT), )
@@ -16,9 +18,10 @@ ifeq ($(PIN_ROOT), )
   endif
 endif
 
+# Store path to Pin if in top-level make
 ifeq ($(MAKECMDGOALS), )
   $(info =======================================)
-  $(info PIN_ROOT is ${PIN_ROOT})
+  $(info Using Pin installation in ${PIN_ROOT})
   $(info =======================================)
   $(shell echo ${PIN_ROOT} > .pin_root)
 endif
