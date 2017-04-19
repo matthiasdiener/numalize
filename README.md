@@ -25,4 +25,4 @@ Generate page access pattern:
 ## Publication
 Numalize is described in:
 
-- Matthias Diener, Eduardo H. M. Cruz, Laércio L. Pilla, Fabrice Dupros, Philippe O. A. Navaux. “Characterizing Communication and Page Usage of Parallel Applications for Thread and Data Mapping.” Performance Evaluation, 2015. http://dx.doi.org/10.1016/j.peva.2015.03.001
+- Matthias Diener, Eduardo H. M. Cruz, Laércio L. Pilla, Fabrice Dupros, Philippe O. A. Navaux. **“Characterizing Communication and Page Usage of Parallel Applications for Thread and Data Mapping.”** Performance Evaluation, 2015. http://dx.doi.org/10.1016/j.peva.2015.03.001
