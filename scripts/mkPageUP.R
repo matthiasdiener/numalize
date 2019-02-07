@@ -26,6 +26,12 @@ for (filename in filenames) {
 
 	outfilename = paste0(sub(".csv.xz", ".pageup", filename), ".pdf")
 
+	# remove unused columns
+	data = data[,!colnames(data) %in% c("nr", "alloc.thread", "alloc.location", "firsttouch.location", "structure.name")]
+
+	colnames(data)[1] = "addr"
+	colnames(data)[2] = "firstacc"
+
 	threads = grep("T\\d+", names(data))
 	nthreads = length(threads)
 	tpn = nthreads / nnodes
