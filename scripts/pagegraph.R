@@ -23,6 +23,12 @@ for (filename in files) {
 	# data = data[, lapply(.SD, sum), by=addr]
 	# data = data.frame(data)
 
+	# remove unused columns
+	data = data[,!colnames(data) %in% c("nr", "alloc.thread", "alloc.location", "firsttouch.location", "structure.name")]
+
+	colnames(data)[1] = "addr"
+	colnames(data)[2] = "firstacc"
+
 	threads = grep("T\\d+", names(data))
 	nthreads = length(threads)
 	tpn = nthreads / nnodes
